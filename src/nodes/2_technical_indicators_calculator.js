@@ -87,7 +87,15 @@ function technicalIndicatorsCalculator($input) {
         const sma = SMA(arr, period);
         let variance = 0;
         for (let i = arr.length - period; i < arr.length; i++) {
+            if (arr[i] && typeof arr[i].close === 'number') {
             variance += Math.pow(arr[i].close - sma, 2);
+            } else {
+                // Handle cases where arr[i] or arr[i].close is invalid
+                // For a robust implementation, you might want to log this or throw an error,
+                // or skip this data point and adjust the divisor for variance calculation.
+                // For simplicity here, we're assuming valid data from previous checks or external handling.
+                console.warn(`Invalid data point found at index ${i} during Bollinger Band variance calculation.`);
+            }
         }
         const stdDev = Math.sqrt(variance / period);
         return {
