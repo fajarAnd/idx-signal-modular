@@ -1,4 +1,4 @@
-// src/nodes/4_confluence_score_calculator.js
+// src/nodes/4_confluence_score_calculator.test.js
 /**
  * Confluence Score Calculator Node
  * Calculates confluence score based on multiple technical factors

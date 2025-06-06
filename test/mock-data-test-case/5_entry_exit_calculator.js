@@ -1,4 +1,4 @@
-// test/mock-data-test-case/5_entry_exit_calculator.js
+// test/mock-data-test-case/5_entry_exit_calculator.test.js
 /**
  * Mock data and test cases for Entry Exit Calculator node
  */

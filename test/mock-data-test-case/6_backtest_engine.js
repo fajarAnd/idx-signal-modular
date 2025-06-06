@@ -1,4 +1,4 @@
-// test/mock-data-test-case/6_backtest_engine.js
+// test/mock-data-test-case/6_backtest_engine.test.js
 /**
  * Mock data and test cases for Backtest Engine node
  */

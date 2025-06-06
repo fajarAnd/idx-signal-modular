@@ -23,7 +23,13 @@ function parseAndSlice($input) {
             }));
 
         const lastDateRaw = candles[candles.length - 1]?.date;
-        const lastDate = new Date(lastDateRaw).toISOString().substring(0, 10);
+        let lastDate;
+        if (lastDateRaw && !isNaN(new Date(lastDateRaw))) {
+            lastDate = new Date(lastDateRaw).toISOString().substring(0, 10);
+        } else {
+            console.warn(`Invalid or missing lastDateRaw: "${lastDateRaw}". Using current date as fallback.`);
+            lastDate = new Date().toISOString().substring(0, 10);
+        }
 
         return { ticker: code, lastDate, candles };
     });

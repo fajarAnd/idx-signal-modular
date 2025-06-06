@@ -108,14 +108,14 @@ test/
 └── mock-data-test-case/             # Mock data generators
     ├── all_nodes_common.js              # Common utilities
     ├── parse_and_slice.js
-    ├── 1_data_validation_and_preprocessing.js
-    ├── 2_technical_indicators_calculator.js
-    ├── 3_pivot_points_support_resistance_detection.js
-    ├── 4_confluence_score_calculator.js
-    ├── 5_entry_exit_calculator.js           # ✨ NEW
-    ├── 6_backtest_engine.js                 # ✨ NEW
-    ├── 7_position_sizing_risk_management.js
-    └── 8_action_recommendation_engine.js
+    ├── 1_data_validation_and_preprocessing.test.js
+    ├── 2_technical_indicators_calculator.test.js
+    ├── 3_pivot_points_support_resistance_detection.test.js
+    ├── 4_confluence_score_calculator.test.js
+    ├── 5_entry_exit_calculator.test.js           # ✨ NEW
+    ├── 6_backtest_engine.test.js                 # ✨ NEW
+    ├── 7_position_sizing_risk_management.test.js
+    └── 8_action_recommendation_engine.test.js
 ```
 
 ### Test Commands

@@ -1,4 +1,4 @@
-// test/mock-data-test-case/2_technical_indicators_calculator.js
+// test/mock-data-test-case/2_technical_indicators_calculator.test.js
 /**
  * Mock data and test cases for Technical Indicators Calculator node
  */

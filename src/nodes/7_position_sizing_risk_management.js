@@ -1,4 +1,4 @@
-// src/nodes/7_position_sizing_risk_management.js
+// src/nodes/7_position_sizing_risk_management.test.js
 /**
  * Position Sizing & Risk Management Node
  * Calculates optimal position size based on risk management rules

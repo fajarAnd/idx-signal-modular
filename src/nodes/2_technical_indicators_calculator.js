@@ -1,4 +1,4 @@
-// src/nodes/2_technical_indicators_calculator.js
+// src/nodes/2_technical_indicators_calculator.test.js
 /**
  * Technical Indicators Calculator Node
  * Calculates various technical indicators: SMA, EMA, RSI, MACD, Bollinger Bands, ATR, StochRSI

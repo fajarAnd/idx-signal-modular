@@ -1,4 +1,4 @@
-// src/nodes/5_entry_exit_calculator.js
+// src/nodes/5_entry_exit_calculator.test.js
 /**
  * Entry Exit Calculator Node
  * Calculates entry price, stop loss, target price and risk/reward ratios

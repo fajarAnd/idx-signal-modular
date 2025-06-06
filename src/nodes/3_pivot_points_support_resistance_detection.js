@@ -1,4 +1,4 @@
-// src/nodes/3_pivot_points_support_resistance_detection.js
+// src/nodes/3_pivot_points_support_resistance_detection.test.js
 /**
  * Pivot Points & Support/Resistance Detection Node
  * Detects pivot points and identifies key support/resistance levels

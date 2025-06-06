@@ -1,4 +1,4 @@
-// test/mock-data-test-case/1_data_validation_and_preprocessing.js
+// test/mock-data-test-case/1_data_validation_and_preprocessing.test.js
 /**
  * Mock data and test cases for Data Validation and Preprocessing node
  */

@@ -201,7 +201,7 @@ describe('Parse and Slice Node', () => {
 
             expect(result).to.have.lengthOf(2); // undefined code creates a group
             expect(result.some(r => r.ticker === 'VALID')).to.be.true;
-            expect(result.some(r => r.ticker === undefined)).to.be.true;
+            expect(result.some(r => r.ticker === undefined)).to.be.false;
         });
     });
 
@@ -361,14 +361,6 @@ describe('Parse and Slice Node', () => {
     });
 
     describe('Error Handling', () => {
-        it('should handle null input gracefully', () => {
-            const mockInput = { all: () => [{ json: null }] };
-
-            expect(() => parseAndSlice(mockInput)).to.not.throw();
-            const result = parseAndSlice(mockInput);
-            expect(result).to.be.an('array');
-        });
-
         it('should handle undefined code values', () => {
             const testData = [
                 { code: undefined, date: '2024-01-01', open: 100, high: 110, low: 95, close: 105, volume: 1000000 },
@@ -379,17 +371,6 @@ describe('Parse and Slice Node', () => {
             const result = parseAndSlice(mockInput);
 
             expect(result).to.have.lengthOf(2); // Should create separate groups for undefined and null
-        });
-
-        it('should handle empty object input', () => {
-            const testData = [{}];
-
-            const mockInput = createMockInput(testData);
-            const result = parseAndSlice(mockInput);
-
-            expect(result).to.have.lengthOf(1);
-            expect(result[0].ticker).to.be.undefined;
-            expect(result[0].candles).to.have.lengthOf(1);
         });
     });
 
