@@ -1,0 +1,580 @@
+{
+  "name": "Scheduler Signal IDX V2.0",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "weeks",
+              "triggerAtHour": 7
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        200,
+        -120
+      ],
+      "id": "fa65a8ea-752d-4ad7-a6e1-4943544f8e2d",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select code from stock_history_daily shd \ngroup  by code ",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        420,
+        -120
+      ],
+      "id": "35b4c2bf-be8b-4536-8998-9bdf58c02101",
+      "name": "Get Code Stock",
+      "credentials": {
+        "postgres": {
+          "id": "qnjtCvbKvyjowUdd",
+          "name": "Postgres Dev - Bonapp-corner"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT\n  code         AS \"code\",\n  date,\n  open         AS \"open\",\n  high         AS \"high\",\n  low          AS \"low\",\n  close        AS \"close\",\n  volume       AS \"volume\"\nFROM stock_history_daily\nWHERE code = '{{ $json.code }}'\n  AND date >= (CURRENT_DATE - INTERVAL '{{ $('Schedule Trigger').first().json.intervalMonth }} month')\nORDER BY date DESC\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        640,
+        -120
+      ],
+      "id": "bdf17efe-5a8a-41a4-a7b0-f7a5511fbf39",
+      "name": "Get stock_history_daily",
+      "credentials": {
+        "postgres": {
+          "id": "qnjtCvbKvyjowUdd",
+          "name": "Postgres Dev - Bonapp-corner"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const rows = $input.all();\nif (!rows.length) return [];\n\nconst grouped = {};\nfor (const r of rows) {\n  const { code } = r.json;\n  (grouped[code] ??= []).push(r.json);\n}\n\nconst result = Object.entries(grouped).map(([code, items]) => {\n  const candles = items\n    .sort((a, b) => new Date(a.date) - new Date(b.date))\n    .map(({ date, open, high, low, close, volume }) => ({\n      date, open, high, low, close, volume: +volume,\n    }));\n\n  const lastDateRaw = candles[candles.length - 1]?.date;\n  const lastDate = new Date(lastDateRaw).toISOString().substring(0, 10)\n\n  return { ticker: code, lastDate, candles };\n});\n\nreturn result;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        860,
+        -120
+      ],
+      "id": "6874a92d-4f86-4688-b705-51eb380ad8e9",
+      "name": "Parse and Slice"
+    },
+    {
+      "parameters": {
+        "jsCode": "let processedData = [];\n\nfor (const item of $input.all()) {\n  const { ticker, candles, lastDate } = item.json;\n  \n  if (!candles || !Array.isArray(candles) || candles.length < 50) {\n    continue;\n  }\n  \n  const validCandles = candles.filter(c => \n    c && \n    typeof c.close === 'number' && !isNaN(c.close) &&\n    typeof c.open === 'number' && !isNaN(c.open) &&\n    typeof c.high === 'number' && !isNaN(c.high) &&\n    typeof c.low === 'number' && !isNaN(c.low) &&\n    typeof c.volume === 'number' && !isNaN(c.volume)\n  );\n  \n  if (validCandles.length < candles.length * 0.9) {\n    continue;\n  }\n  \n  if (!candles || candles.length === 0 || !candles[candles.length - 1] || \n      typeof candles[candles.length - 1].close !== 'number') {\n    continue;\n  }\n  \n  const lastClose = candles[candles.length - 1].close;\n  \n  processedData.push({\n    json: {\n      ticker,\n      lastDate,\n      candles: validCandles,\n      lastClose,\n      isValid: true\n    }\n  });\n}\n\nreturn processedData;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1080,
+        -120
+      ],
+      "id": "290838ac-c667-4a47-a55d-5e1469b9891c",
+      "name": "1. Data Validation & Preprocessing"
+    },
+    {
+      "parameters": {
+        "jsCode": "let indicatorResults = [];\n\nconst SMA = (arr, n, field='close') => {\n  if (!arr || arr.length === 0 || n > arr.length) return 0;\n  const slice = arr.slice(-n);\n  let sum = 0, count = 0;\n  for (let i = 0; i < slice.length; i++) {\n    if (slice[i] && typeof slice[i][field] === 'number') {\n      sum += slice[i][field];\n      count++;\n    }\n  }\n  return count > 0 ? sum / count : 0;\n};\n\nconst EMA = (arr, n, field='close') => {\n  if (!arr || arr.length === 0) return 0;\n  const alpha = 2 / (n + 1);\n  let ema = arr[0][field];\n  for (let i = 1; i < arr.length; i++) {\n    ema = alpha * arr[i][field] + (1 - alpha) * ema;\n  }\n  return ema;\n};\n\nconst RSI = (arr, n=14) => {\n  if (!arr || arr.length < n + 1) return 50;\n  let gains=0, losses=0;\n  for (let i=arr.length-n;i<arr.length-1;i++){\n    if (arr[i] && arr[i+1] && typeof arr[i].close === 'number' && typeof arr[i+1].close === 'number') {\n      const diff = arr[i+1].close-arr[i].close;\n      if (diff>=0) gains+=diff; else losses+=-diff;\n    }\n  }\n  const rs = gains / (losses||1e-9);\n  return 100 - 100/(1+rs);\n};\n\nconst MACD = (arr) => {\n  if (!arr || arr.length < 26) return { macdLine: 0, signalLine: 0, histogram: 0 };\n  const ema12 = EMA(arr, 12);\n  const ema26 = EMA(arr, 26);\n  const macdLine = ema12 - ema26;\n  const macdHistory = [];\n  for (let i = 26; i < arr.length; i++) {\n    const slice = arr.slice(0, i + 1);\n    const e12 = EMA(slice, 12);\n    const e26 = EMA(slice, 26);\n    const macdValue = e12 - e26;\n    if (!isNaN(macdValue)) {\n      macdHistory.push(macdValue);\n    }\n  }\n  if (macdHistory.length === 0) return { macdLine: 0, signalLine: 0, histogram: 0 };\n  const macdForEMA = macdHistory.map(v => ({close: v}));\n  const signalLine = EMA(macdForEMA, 9);\n  return { macdLine, signalLine, histogram: macdLine - signalLine };\n};\n\nconst StochRSI = (arr, period = 14) => {\n  if (!arr || arr.length < period * 2) return 0;\n  const rsiValues = [];\n  for (let i = period; i < arr.length; i++) {\n    const slice = arr.slice(0, i + 1);\n    const rsiValue = RSI(slice, period);\n    if (!isNaN(rsiValue)) {\n      rsiValues.push(rsiValue);\n    }\n  }\n  if (rsiValues.length < period) return 0;\n  const recentRSI = rsiValues.slice(-period);\n  const minRSI = Math.min(...recentRSI);\n  const maxRSI = Math.max(...recentRSI);\n  const currentRSI = rsiValues[rsiValues.length - 1];\n  return maxRSI !== minRSI ? (currentRSI - minRSI) / (maxRSI - minRSI) : 0;\n};\n\nconst BollingerBands = (arr, period = 20, multiplier = 2) => {\n  const sma = SMA(arr, period);\n  let variance = 0;\n  for (let i = arr.length - period; i < arr.length; i++) {\n    variance += Math.pow(arr[i].close - sma, 2);\n  }\n  const stdDev = Math.sqrt(variance / period);\n  return {\n    upper: sma + (stdDev * multiplier),\n    middle: sma,\n    lower: sma - (stdDev * multiplier)\n  };\n};\n\nconst ATR = (arr, period = 14) => {\n  const tr = [];\n  for (let i = 1; i < arr.length; i++) {\n    if (arr[i] && arr[i-1] && \n        typeof arr[i].high === 'number' && typeof arr[i].low === 'number' && \n        typeof arr[i-1].close === 'number') {\n      const h = arr[i].high;\n      const l = arr[i].low; \n      const p = arr[i-1].close;\n      tr.push(Math.max(h-l, Math.abs(h-p), Math.abs(l-p)));\n    }\n  }\n  if (tr.length < period) return 0;\n  return tr.slice(-period).reduce((a,b) => a+b, 0) / period;\n};\n\nfor (const item of $input.all()) {\n  const { ticker, lastDate, candles, lastClose } = item.json;\n  \n  const indicators = {\n    sma20: SMA(candles, 20),\n    sma50: SMA(candles, 50),\n    ema21: EMA(candles, 21),\n    rsi: RSI(candles, 14),\n    stochRsi: StochRSI(candles, 14),\n    macd: MACD(candles),\n    bollingerBands: BollingerBands(candles, 20),\n    atr14: ATR(candles, 14),\n    atr21: ATR(candles, 21),\n    volSMA20: SMA(candles, 20, 'volume'),\n    volSMA5: SMA(candles, 5, 'volume'),\n    currentVolume: candles[candles.length - 1]?.volume || 0\n  };\n  \n  indicatorResults.push({\n    json: {\n      ticker,\n      lastDate,\n      candles,\n      lastClose,\n      indicators\n    }\n  });\n}\n\nreturn indicatorResults;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1300,
+        -120
+      ],
+      "id": "86f43871-5077-4652-8b0b-076c8e688d5d",
+      "name": "2. Technical Indicators Calculator"
+    },
+    {
+      "parameters": {
+        "jsCode": "let pivotResults = [];\n\nconst cluster = (arr, threshold = 0.015) => {\n  arr.sort((a, b) => a.price - b.price);\n  return arr.reduce((out, current) => {\n    if (!out.length) {\n      out.push(current);\n    } else {\n      const lastCluster = out[out.length - 1];\n      if (Math.abs(current.price / lastCluster.price - 1) <= threshold) {\n        if (current.strength > lastCluster.strength) {\n          out[out.length - 1] = current;\n        }\n      } else {\n        out.push(current);\n      }\n    }\n    return out;\n  }, []);\n};\n\nfor (const item of $input.all()) {\n  const { ticker, lastDate, candles, lastClose, indicators } = item.json;\n  \n  const lookback = 5;\n  const pivots = [];\n  \n  if (!candles || candles.length < lookback * 2 + 1) continue;\n  \n  for (let i = lookback; i < candles.length - lookback; i++) {\n    const slice = candles.slice(i - lookback, i + lookback + 1);\n    \n    const validSlice = slice.filter(c => c && typeof c.high === 'number' && typeof c.low === 'number' && typeof c.volume === 'number');\n    if (validSlice.length !== slice.length) continue;\n    \n    const hiMax = Math.max(...slice.map(c => c.high));\n    const loMin = Math.min(...slice.map(c => c.low));\n    \n    const avgVolume = slice.reduce((sum, c) => sum + c.volume, 0) / slice.length;\n    const volumeWeight = avgVolume > 0 ? candles[i].volume / avgVolume : 1;\n    \n    if (candles[i].high === hiMax) {\n      pivots.push({\n        type: 'R', \n        price: candles[i].high, \n        strength: volumeWeight,\n        index: i\n      });\n    }\n    if (candles[i].low === loMin) {\n      pivots.push({\n        type: 'S', \n        price: candles[i].low, \n        strength: volumeWeight,\n        index: i\n      });\n    }\n  }\n  \n  const supArr = cluster(pivots.filter(p => p.type === 'S'));\n  const resArr = cluster(pivots.filter(p => p.type === 'R'));\n  \n  const support = supArr.filter(s => s.price < lastClose).at(-1);\n  const resistance = resArr.find(r => r.price > lastClose);\n  \n  if (!support || !resistance) continue;\n  \n  const supportAge = candles.length - support.index;\n  const supportTests = supArr.filter(s => \n    Math.abs(s.price - support.price) / support.price <= 0.02\n  ).length;\n  \n  pivotResults.push({\n    json: {\n      ticker,\n      lastDate,\n      candles,\n      lastClose,\n      indicators,\n      support: {\n        ...support,\n        age: supportAge,\n        tests: supportTests\n      },\n      resistance,\n      pivots: {\n        all: pivots,\n        supports: supArr,\n        resistances: resArr\n      }\n    }\n  });\n}\n\nreturn pivotResults;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1520,
+        -120
+      ],
+      "id": "66ee35fc-556f-4437-8388-c1ef82fe55da",
+      "name": "3. Pivot Points & Support/Resistance Detection"
+    },
+    {
+      "parameters": {
+        "jsCode": "let confluenceResults = [];\n\nfor (const item of $input.all()) {\n  const { ticker, lastDate, candles, lastClose, indicators, support, resistance } = item.json;\n  \n  let confluenceScore = 0;\n  const hits = [];\n  \n  if (lastClose > indicators.sma20 && indicators.sma20 > indicators.sma50 && lastClose > indicators.ema21) {\n    confluenceScore += 2;\n    hits.push('Multi-timeframe bullish alignment');\n  } else if (lastClose > indicators.sma50) {\n    confluenceScore += 1;\n    hits.push('Basic uptrend');\n  }\n  \n  if (indicators.rsi < 40 && indicators.stochRsi < 0.3) {\n    confluenceScore += 2;\n    hits.push('Double oversold (RSI: ' + indicators.rsi.toFixed(1) + ', StochRSI: ' + (indicators.stochRsi*100).toFixed(1) + '%)');\n  } else if (indicators.rsi < 45) {\n    confluenceScore += 1;\n    hits.push('RSI oversold (' + indicators.rsi.toFixed(1) + ')');\n  }\n  \n  if (indicators.macd.macdLine > indicators.macd.signalLine && indicators.macd.histogram > 0) {\n    confluenceScore += 1;\n    hits.push('MACD bullish crossover');\n  }\n  \n  if (lastClose <= indicators.bollingerBands.lower * 1.02) {\n    confluenceScore += 1;\n    hits.push('Near Bollinger lower band');\n  }\n  \n  if (indicators.currentVolume > indicators.volSMA20 * 2 && indicators.volSMA5 > indicators.volSMA20 * 1.5) {\n    confluenceScore += 2;\n    hits.push('Sustained volume breakout');\n  } else if (indicators.currentVolume > indicators.volSMA20 * 1.5) {\n    confluenceScore += 1;\n    hits.push('Volume spike detected');\n  }\n  \n  if (support.tests >= 3 && support.age >= 10) {\n    confluenceScore += 2;\n    hits.push('Strong support (' + support.tests + ' tests, ' + support.age + ' periods old)');\n  } else if (support.tests >= 2) {\n    confluenceScore += 1;\n    hits.push('Reliable support (' + support.tests + ' tests)');\n  }\n  \n  const recent5 = candles.slice(-5).filter(c => \n    c && typeof c.close === 'number' && typeof c.open === 'number' && \n    typeof c.high === 'number' && typeof c.low === 'number'\n  );\n  \n  const hasHammer = recent5.some(c => {\n    const body = Math.abs(c.close - c.open);\n    const lowerShadow = Math.min(c.open, c.close) - c.low;\n    const upperShadow = c.high - Math.max(c.open, c.close);\n    return lowerShadow > body * 2 && upperShadow < body * 0.5;\n  });\n  \n  if (hasHammer) {\n    confluenceScore += 1;\n    hits.push('Hammer/Doji pattern detected');\n  }\n  \n  confluenceResults.push({\n    json: {\n      ticker,\n      lastDate,\n      candles,\n      lastClose,\n      indicators,\n      support,\n      resistance,\n      confluence: {\n        score: confluenceScore,\n        hits: hits\n      }\n    }\n  });\n}\n\nreturn confluenceResults;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1740,
+        -120
+      ],
+      "id": "8beeda9a-fe93-463f-b139-2ff280c10601",
+      "name": "4. Confluence Score Calculator"
+    },
+    {
+      "parameters": {
+        "jsCode": "let entryExitResults = [];\n\nfor (const item of $input.all()) {\n  const { ticker, lastDate, candles, lastClose, indicators, support, resistance, confluence } = item.json;\n  \n  const entry = support.strength > 1.2 ? support.price * 1.005 : support.price;\n  \n  const conservativeStop = entry - indicators.atr14 * 1.5;\n  const supportStop = support.price - (support.price * 0.03);\n  const stop = Math.max(conservativeStop, supportStop);\n  \n  const target1 = entry + (indicators.atr14 * 2);\n  const target2 = resistance.price;\n  const target = Math.min(target1, target2);\n  \n  const entryGapPercent = +(((lastClose - entry) / entry) * 100).toFixed(2);\n  const riskLot = entry - stop;\n  const rewardLot = target - entry;\n  \n  if (riskLot <= 0 || rewardLot <= 0) continue;\n  \n  const riskReward = rewardLot / riskLot;\n  \n  if (riskReward < 1.8) continue;\n  \n  let entryStrategy = 'Wait for Pullback';\n  if (entryGapPercent <= 1) {\n    entryStrategy = 'Immediate Entry (At Support)';\n  } else if (entryGapPercent <= 3) {\n    entryStrategy = 'Breakout Entry (Acceptable Gap)';\n  } else if (entryGapPercent <= 5) {\n    entryStrategy = 'Aggressive Entry (High Risk)';\n  } else {\n    entryStrategy = 'Wait for Retest';\n  }\n  \n  entryExitResults.push({\n    json: {\n      ticker,\n      lastDate,\n      candles,\n      lastClose,\n      indicators,\n      support,\n      resistance,\n      confluence,\n      entryExit: {\n        entry: +entry.toFixed(0),\n        stop: +stop.toFixed(0),\n        target: +target.toFixed(0),\n        riskReward: +riskReward.toFixed(2),\n        entryGapPercent,\n        riskLot,\n        rewardLot,\n        entryStrategy\n      }\n    }\n  });\n}\n\nreturn entryExitResults;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1960,
+        -120
+      ],
+      "id": "1f580fd3-f3d6-46a5-850b-271409e4a68b",
+      "name": "5. Entry Exit Calculator"
+    },
+    {
+      "parameters": {
+        "jsCode": "let backtestResults = [];\n\nfor (const item of $input.all()) {\n  const { ticker, lastDate, candles, lastClose, indicators, support, resistance, confluence, entryExit } = item.json;\n  \n  let wins = 0, losses = 0, total = 0;\n  const recentPeriod = Math.min(candles.length - 20, 100);\n  \n  for (let i = Math.max(14, candles.length - recentPeriod); i < candles.length - 1; i++) {\n    if (!candles[i] || typeof candles[i].low !== 'number') continue;\n    \n    const testEntry = candles[i].low <= entryExit.entry * 1.005;\n    if (testEntry) {\n      total++;\n      let hitTarget = false, hitStop = false;\n      \n      for (let j = i + 1; j < candles.length && !hitTarget && !hitStop; j++) {\n        if (!candles[j] || typeof candles[j].low !== 'number' || typeof candles[j].high !== 'number') {\n          break;\n        }\n        \n        if (candles[j].low <= entryExit.stop) {\n          losses++;\n          hitStop = true;\n        } else if (candles[j].high >= entryExit.target) {\n          wins++;\n          hitTarget = true;\n        }\n      }\n    }\n  }\n  \n  if (total === 0) continue;\n  \n  const winRateDec = wins / total;\n  \n  if (winRateDec < 0.52) continue;\n  if (total < 5) continue;\n  \n  const backtestWinRate = +(winRateDec * 100).toFixed(1);\n  \n  let bonusConfluence = 0;\n  if (winRateDec > 0.7 && total >= 8) bonusConfluence++;\n  if (entryExit.riskReward > 2.5) bonusConfluence++;\n  \n  backtestResults.push({\n    json: {\n      ticker,\n      lastDate,\n      candles,\n      lastClose,\n      indicators,\n      support,\n      resistance,\n      confluence: {\n        ...confluence,\n        score: confluence.score + bonusConfluence\n      },\n      entryExit,\n      backtest: {\n        wins,\n        losses,\n        total,\n        winRateDec,\n        backtestWinRate\n      }\n    }\n  });\n}\n\nreturn backtestResults;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2180,
+        -120
+      ],
+      "id": "242c577f-df83-410d-9dec-9e6dfe580a6e",
+      "name": "6. Backtest Engine"
+    },
+    {
+      "parameters": {
+        "jsCode": "let positionResults = [];\n\nconst lotValue = 100;\nconst MAX_LOSS = $('Schedule Trigger').first().json.MaxLoss || 100000;\nconst CAPITAL = $('Schedule Trigger').first().json.modalTersedia || 5000000;\n\nfor (const item of $input.all()) {\n  const { ticker, lastDate, candles, lastClose, indicators, support, resistance, confluence, entryExit, backtest } = item.json;\n  \n  const qtyRisk = Math.floor(MAX_LOSS / entryExit.riskLot);\n  const qtyFunds = Math.floor(CAPITAL / (entryExit.entry * lotValue));\n  const qty = Math.max(1, Math.min(qtyRisk, qtyFunds));\n  \n  const nominalLoss = qty * lotValue * entryExit.riskLot;\n  const nominalProfit = qty * lotValue * entryExit.rewardLot;\n  const expectancyRp = Math.round(backtest.winRateDec * nominalProfit - (1 - backtest.winRateDec) * nominalLoss);\n  const totalCost = qty * lotValue * entryExit.entry;\n  \n  const marketPhase = lastClose > indicators.sma20 && indicators.sma20 > indicators.sma50 ? 'Uptrend' : \n                     lastClose < indicators.sma20 && indicators.sma20 < indicators.sma50 ? 'Downtrend' : 'Sideways';\n  \n  positionResults.push({\n    json: {\n      ticker,\n      lastDate,\n      lastClose,\n      entryGapPercent: entryExit.entryGapPercent,\n      entry: entryExit.entry,\n      stop: entryExit.stop,\n      target: entryExit.target,\n      riskReward: entryExit.riskReward,\n      backtestWinRate: backtest.backtestWinRate,\n      totalTrades: backtest.total,\n      confluenceScore: confluence.score,\n      qty,\n      totalCost: totalCost.toLocaleString('id-ID'),\n      nominalProfit: nominalProfit.toLocaleString('id-ID'),\n      nominalLoss: nominalLoss.toLocaleString('id-ID'),\n      expectancy: expectancyRp.toLocaleString('id-ID'),\n      confluenceHits: confluence.hits.join(' | '),\n      entryStrategy: entryExit.entryStrategy,\n      supportStrength: support.strength.toFixed(2),\n      resistanceDistance: +((resistance.price - lastClose) / lastClose * 100).toFixed(2),\n      atr14: +indicators.atr14.toFixed(0),\n      marketPhase\n    }\n  });\n}\n\nreturn positionResults;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2400,
+        -120
+      ],
+      "id": "1de9bf33-33ac-4fc0-9899-fcab4abf5f6c",
+      "name": "7. Position Sizing & Risk Management"
+    },
+    {
+      "parameters": {
+        "jsCode": "let finalResults = [];\n\nconst REQ_SCORE = $('Schedule Trigger').first().json.scoreGreaterThan || 2;\n\nfor (const item of $input.all()) {\n  const data = item.json;\n  \n  if (data.confluenceScore < REQ_SCORE) continue;\n  \n  let actionRecommendation = 'Manual review required';\n  \n  if (data.backtestWinRate >= 70 && data.confluenceScore >= 5 && data.riskReward >= 2.0) {\n    actionRecommendation = 'STRONG BUY - High confidence';\n  } else if (data.backtestWinRate >= 65 && data.confluenceScore >= 4) {\n    actionRecommendation = 'BUY - Good setup';\n  } else if (data.backtestWinRate >= 58 && data.confluenceScore >= 3) {\n    actionRecommendation = 'CAUTIOUS BUY - Partial position';\n  } else if (data.backtestWinRate >= 52 && data.confluenceScore >= 2) {\n    actionRecommendation = 'WATCHLIST - Wait for better entry';\n  } else {\n    actionRecommendation = 'AVOID - Poor setup';\n  }\n  \n  finalResults.push({\n    json: {\n      ...data,\n      actionRecommendation\n    }\n  });\n}\n\nreturn finalResults;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2620,
+        -120
+      ],
+      "id": "fcae7140-9d88-4e60-83e5-c1f420b1b527",
+      "name": "8. Action Recommendation Engine"
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "https://docs.google.com/spreadsheets/d/1rEQacIB4vpcdNO9fjrfWANmC5GO3WciYL4G5f77gLSg/edit?gid=1984047283#gid=1984047283",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1984047283,
+          "mode": "list",
+          "cachedResultName": "Signal IDX",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1rEQacIB4vpcdNO9fjrfWANmC5GO3WciYL4G5f77gLSg/edit#gid=1984047283"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [
+            "ticker"
+          ],
+          "schema": [
+            {
+              "id": "ticker",
+              "displayName": "ticker",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "lastDate",
+              "displayName": "lastDate",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "entry",
+              "displayName": "entry",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "stop",
+              "displayName": "stop",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "target",
+              "displayName": "target",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "riskReward",
+              "displayName": "riskReward",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "backtestWinRate",
+              "displayName": "backtestWinRate",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "totalTrades",
+              "displayName": "totalTrades",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "confluenceScore",
+              "displayName": "confluenceScore",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "qty",
+              "displayName": "qty",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "totalCost",
+              "displayName": "totalCost",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "nominalProfit",
+              "displayName": "nominalProfit",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "nominalLoss",
+              "displayName": "nominalLoss",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "expectancy",
+              "displayName": "expectancy",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "actionRecommendation",
+              "displayName": "actionRecommendation",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "confluenceHits",
+              "displayName": "confluenceHits",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "entryStrategy",
+              "displayName": "entryStrategy",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "supportStrength",
+              "displayName": "supportStrength",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "resistanceDistance",
+              "displayName": "resistanceDistance",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "atr14",
+              "displayName": "atr14",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "marketPhase",
+              "displayName": "marketPhase",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        2840,
+        -120
+      ],
+      "id": "3f01872a-1151-42d4-a540-359d5f3b898d",
+      "name": "Google Sheets",
+      "credentials": {
+        "googleApi": {
+          "id": "2qURPceNLUV9iGHn",
+          "name": "Google Service Account N8n"
+        }
+      }
+    }
+  ],
+  "pinData": {
+    "Schedule Trigger": [
+      {
+        "json": {
+          "intervalMonth": 4,
+          "modalTersedia": 3300000,
+          "scoreGreaterThan": 1,
+          "MaxLoss": 200000
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get Code Stock",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Code Stock": {
+      "main": [
+        [
+          {
+            "node": "Get stock_history_daily",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get stock_history_daily": {
+      "main": [
+        [
+          {
+            "node": "Parse and Slice",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse and Slice": {
+      "main": [
+        [
+          {
+            "node": "1. Data Validation & Preprocessing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "1. Data Validation & Preprocessing": {
+      "main": [
+        [
+          {
+            "node": "2. Technical Indicators Calculator",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "2. Technical Indicators Calculator": {
+      "main": [
+        [
+          {
+            "node": "3. Pivot Points & Support/Resistance Detection",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "3. Pivot Points & Support/Resistance Detection": {
+      "main": [
+        [
+          {
+            "node": "4. Confluence Score Calculator",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "4. Confluence Score Calculator": {
+      "main": [
+        [
+          {
+            "node": "5. Entry Exit Calculator",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "5. Entry Exit Calculator": {
+      "main": [
+        [
+          {
+            "node": "6. Backtest Engine",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "6. Backtest Engine": {
+      "main": [
+        [
+          {
+            "node": "7. Position Sizing & Risk Management",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "7. Position Sizing & Risk Management": {
+      "main": [
+        [
+          {
+            "node": "8. Action Recommendation Engine",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "8. Action Recommendation Engine": {
+      "main": [
+        [
+          {
+            "node": "Google Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "0161defb-3bb6-4b66-995b-901985782607",
+  "meta": {
+    "instanceId": "a06abe883338c6411d4de812ccc15709fe5c7db7ed2184999619cc1177983f5d"
+  },
+  "id": "5r5O7lYWpqDBnpru",
+  "tags": []
+}
