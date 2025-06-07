@@ -48,18 +48,50 @@ const createIndicatorTestData = (scenario) => {
             };
 
         case 'trending_down':
-            // Create downtrending data
+            // Create consistent downtrending data for RSI testing
             const downtrendCandles = [];
-            for (let i = 0; i < 50; i++) {
+            let currentPrice = 3000;
+
+            // Create 15 periods of mixed movement first (neutral)
+            for (let i = 0; i < 15; i++) {
+                const change = (Math.random() - 0.5) * 20; // ±10 point random movement
+                const open = currentPrice;
+                const close = open + change;
+                const high = Math.max(open, close) + Math.random() * 5;
+                const low = Math.min(open, close) - Math.random() * 5;
+
                 downtrendCandles.push({
                     date: `2024-01-${String(i + 1).padStart(2, '0')}`,
-                    open: 3000 - i * 10,
-                    high: 3020 - i * 10,
-                    low: 2990 - i * 10,
-                    close: 3010 - i * 10,
+                    open: Math.round(open),
+                    high: Math.round(high),
+                    low: Math.round(low),
+                    close: Math.round(close),
                     volume: 1000000 + Math.random() * 500000
                 });
+
+                currentPrice = close;
             }
+
+            // Create consistent downtrend for the last 35 periods to ensure RSI < 50
+            for (let i = 15; i < 50; i++) {
+                const decline = 15 + (Math.random() * 15); // 15-30 point decline per period
+                const open = currentPrice;
+                const close = open - decline;
+                const high = open + (Math.random() * 5); // Small upward wick
+                const low = close - (Math.random() * 5); // Small downward wick
+
+                downtrendCandles.push({
+                    date: `2024-01-${String(i + 1).padStart(2, '0')}`,
+                    open: Math.round(open),
+                    high: Math.round(Math.max(open, close, high)),
+                    low: Math.round(Math.min(open, close, low)),
+                    close: Math.round(close),
+                    volume: 1000000 + Math.random() * 500000
+                });
+
+                currentPrice = close;
+            }
+
             return {
                 ticker: 'DOWNTREND_TEST',
                 lastDate: '2024-06-06',
@@ -93,10 +125,24 @@ const createIndicatorTestData = (scenario) => {
 
         case 'high_volume':
             const highVolCandles = generateMockCandles(60);
-            // Increase volume for last few candles
-            for (let i = highVolCandles.length - 10; i < highVolCandles.length; i++) {
-                highVolCandles[i].volume *= 3; // 3x normal volume
+            // Create more predictable volume pattern
+            const baseVolume = 1000000;
+
+            // Set baseline volume for most candles
+            for (let i = 0; i < highVolCandles.length - 10; i++) {
+                highVolCandles[i].volume = baseVolume + (Math.random() * 200000);
             }
+
+            // Set high volume for last 10 candles to ensure spike detection
+            for (let i = highVolCandles.length - 10; i < highVolCandles.length; i++) {
+                highVolCandles[i].volume = baseVolume * 4; // 4x normal volume to ensure spike
+            }
+
+            // Also increase volume for last 5 candles to ensure volSMA5 > volSMA20
+            for (let i = highVolCandles.length - 5; i < highVolCandles.length; i++) {
+                highVolCandles[i].volume = baseVolume * 5; // 5x normal volume
+            }
+
             return {
                 ticker: 'HIGH_VOLUME_TEST',
                 lastDate: '2024-06-06',

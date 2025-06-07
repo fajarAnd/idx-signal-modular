@@ -1,19 +1,19 @@
-// src/nodes/2_technical_indicators_calculator.test.js
+// src/nodes/2_technical_indicators_calculator.js
 /**
  * Technical Indicators Calculator Node
  * Calculates various technical indicators: SMA, EMA, RSI, MACD, Bollinger Bands, ATR, StochRSI
+ * Enhanced version with improved error handling and edge case management
  */
 
-//extract the function from N8N node
 function technicalIndicatorsCalculator($input) {
     let indicatorResults = [];
 
-    const SMA = (arr, n, field='close') => {
-        if (!arr || arr.length === 0 || n > arr.length) return 0;
+    const SMA = (arr, n, field = 'close') => {
+        if (!arr || !Array.isArray(arr) || arr.length === 0 || n > arr.length) return 0;
         const slice = arr.slice(-n);
         let sum = 0, count = 0;
         for (let i = 0; i < slice.length; i++) {
-            if (slice[i] && typeof slice[i][field] === 'number') {
+            if (slice[i] && typeof slice[i][field] === 'number' && !isNaN(slice[i][field])) {
                 sum += slice[i][field];
                 count++;
             }
@@ -21,31 +21,60 @@ function technicalIndicatorsCalculator($input) {
         return count > 0 ? sum / count : 0;
     };
 
-    const EMA = (arr, n, field='close') => {
-        if (!arr || arr.length === 0) return 0;
+    const EMA = (arr, n, field = 'close') => {
+        if (!arr || !Array.isArray(arr) || arr.length === 0) return 0;
+        if (!arr[0] || typeof arr[0][field] !== 'number') return 0;
+
         const alpha = 2 / (n + 1);
         let ema = arr[0][field];
         for (let i = 1; i < arr.length; i++) {
-            ema = alpha * arr[i][field] + (1 - alpha) * ema;
+            if (arr[i] && typeof arr[i][field] === 'number' && !isNaN(arr[i][field])) {
+                ema = alpha * arr[i][field] + (1 - alpha) * ema;
+            }
         }
         return ema;
     };
 
-    const RSI = (arr, n=14) => {
-        if (!arr || arr.length < n + 1) return 50;
-        let gains=0, losses=0;
-        for (let i=arr.length-n;i<arr.length-1;i++){
-            if (arr[i] && arr[i+1] && typeof arr[i].close === 'number' && typeof arr[i+1].close === 'number') {
-                const diff = arr[i+1].close-arr[i].close;
-                if (diff>=0) gains+=diff; else losses+=-diff;
+    const RSI = (arr, n = 14) => {
+        if (!arr || !Array.isArray(arr) || arr.length < n + 1) return 50;
+
+        let gains = 0, losses = 0, validPairs = 0;
+
+        // Calculate over the last n periods
+        for (let i = Math.max(0, arr.length - n - 1); i < arr.length - 1; i++) {
+            if (arr[i] && arr[i + 1] &&
+                typeof arr[i].close === 'number' && !isNaN(arr[i].close) &&
+                typeof arr[i + 1].close === 'number' && !isNaN(arr[i + 1].close)) {
+
+                const diff = arr[i + 1].close - arr[i].close;
+                if (diff >= 0) {
+                    gains += diff;
+                } else {
+                    losses += Math.abs(diff);
+                }
+                validPairs++;
             }
         }
-        const rs = gains / (losses||1e-9);
-        return 100 - 100/(1+rs);
+
+        // Need at least some valid pairs to calculate RSI
+        if (validPairs === 0) return 50;
+
+        // Average gains and losses
+        const avgGains = gains / validPairs;
+        const avgLosses = losses / validPairs;
+
+        // Prevent division by zero
+        if (avgLosses === 0) return avgGains > 0 ? 100 : 50;
+
+        const rs = avgGains / avgLosses;
+        const rsi = 100 - (100 / (1 + rs));
+
+        // Ensure RSI is within valid range
+        return Math.max(0, Math.min(100, rsi));
     };
 
     const MACD = (arr) => {
-        if (!arr || arr.length < 26) return { macdLine: 0, signalLine: 0, histogram: 0 };
+        if (!arr || !Array.isArray(arr) || arr.length < 26) return { macdLine: 0, signalLine: 0, histogram: 0 };
         const ema12 = EMA(arr, 12);
         const ema26 = EMA(arr, 26);
         const macdLine = ema12 - ema26;
@@ -60,13 +89,13 @@ function technicalIndicatorsCalculator($input) {
             }
         }
         if (macdHistory.length === 0) return { macdLine: 0, signalLine: 0, histogram: 0 };
-        const macdForEMA = macdHistory.map(v => ({close: v}));
+        const macdForEMA = macdHistory.map(v => ({ close: v }));
         const signalLine = EMA(macdForEMA, 9);
         return { macdLine, signalLine, histogram: macdLine - signalLine };
     };
 
     const StochRSI = (arr, period = 14) => {
-        if (!arr || arr.length < period * 2) return 0;
+        if (!arr || !Array.isArray(arr) || arr.length < period * 2) return 0;
         const rsiValues = [];
         for (let i = period; i < arr.length; i++) {
             const slice = arr.slice(0, i + 1);
@@ -84,20 +113,45 @@ function technicalIndicatorsCalculator($input) {
     };
 
     const BollingerBands = (arr, period = 20, multiplier = 2) => {
+        // Enhanced error handling for null/undefined arrays
+        if (!arr || !Array.isArray(arr) || arr.length < period) {
+            return {
+                upper: 0,
+                middle: 0,
+                lower: 0
+            };
+        }
+
         const sma = SMA(arr, period);
+        if (sma === 0) {
+            return {
+                upper: 0,
+                middle: 0,
+                lower: 0
+            };
+        }
+
         let variance = 0;
-        for (let i = arr.length - period; i < arr.length; i++) {
-            if (arr[i] && typeof arr[i].close === 'number') {
-            variance += Math.pow(arr[i].close - sma, 2);
-            } else {
-                // Handle cases where arr[i] or arr[i].close is invalid
-                // For a robust implementation, you might want to log this or throw an error,
-                // or skip this data point and adjust the divisor for variance calculation.
-                // For simplicity here, we're assuming valid data from previous checks or external handling.
-                console.warn(`Invalid data point found at index ${i} during Bollinger Band variance calculation.`);
+        let validCount = 0;
+
+        // Calculate variance with proper bounds checking
+        const startIndex = Math.max(0, arr.length - period);
+        for (let i = startIndex; i < arr.length; i++) {
+            if (arr[i] && typeof arr[i].close === 'number' && !isNaN(arr[i].close)) {
+                variance += Math.pow(arr[i].close - sma, 2);
+                validCount++;
             }
         }
-        const stdDev = Math.sqrt(variance / period);
+
+        if (validCount === 0) {
+            return {
+                upper: sma,
+                middle: sma,
+                lower: sma
+            };
+        }
+
+        const stdDev = Math.sqrt(variance / validCount);
         return {
             upper: sma + (stdDev * multiplier),
             middle: sma,
@@ -106,23 +160,53 @@ function technicalIndicatorsCalculator($input) {
     };
 
     const ATR = (arr, period = 14) => {
+        if (!arr || !Array.isArray(arr) || arr.length < 2) return 0;
+
         const tr = [];
         for (let i = 1; i < arr.length; i++) {
-            if (arr[i] && arr[i-1] &&
-                typeof arr[i].high === 'number' && typeof arr[i].low === 'number' &&
-                typeof arr[i-1].close === 'number') {
+            if (arr[i] && arr[i - 1] &&
+                typeof arr[i].high === 'number' && !isNaN(arr[i].high) &&
+                typeof arr[i].low === 'number' && !isNaN(arr[i].low) &&
+                typeof arr[i - 1].close === 'number' && !isNaN(arr[i - 1].close)) {
                 const h = arr[i].high;
                 const l = arr[i].low;
-                const p = arr[i-1].close;
-                tr.push(Math.max(h-l, Math.abs(h-p), Math.abs(l-p)));
+                const p = arr[i - 1].close;
+                tr.push(Math.max(h - l, Math.abs(h - p), Math.abs(l - p)));
             }
         }
         if (tr.length < period) return 0;
-        return tr.slice(-period).reduce((a,b) => a+b, 0) / period;
+        return tr.slice(-period).reduce((a, b) => a + b, 0) / period;
     };
 
     for (const item of $input.all()) {
         const { ticker, lastDate, candles, lastClose } = item.json;
+
+        // Enhanced validation for candles
+        if (!candles || !Array.isArray(candles)) {
+            indicatorResults.push({
+                json: {
+                    ticker,
+                    lastDate,
+                    candles: candles || [],
+                    lastClose,
+                    indicators: {
+                        sma20: 0,
+                        sma50: 0,
+                        ema21: 0,
+                        rsi: 50,
+                        stochRsi: 0,
+                        macd: { macdLine: 0, signalLine: 0, histogram: 0 },
+                        bollingerBands: { upper: 0, middle: 0, lower: 0 },
+                        atr14: 0,
+                        atr21: 0,
+                        volSMA20: 0,
+                        volSMA5: 0,
+                        currentVolume: 0
+                    }
+                }
+            });
+            continue;
+        }
 
         const indicators = {
             sma20: SMA(candles, 20),
@@ -136,7 +220,9 @@ function technicalIndicatorsCalculator($input) {
             atr21: ATR(candles, 21),
             volSMA20: SMA(candles, 20, 'volume'),
             volSMA5: SMA(candles, 5, 'volume'),
-            currentVolume: candles[candles.length - 1]?.volume || 0
+            currentVolume: (candles.length > 0 && candles[candles.length - 1] &&
+                typeof candles[candles.length - 1].volume === 'number') ?
+                candles[candles.length - 1].volume : 0
         };
 
         indicatorResults.push({
