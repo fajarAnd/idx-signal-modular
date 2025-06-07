@@ -118,7 +118,7 @@ function confluenceScoreCalculator($input) {
             }
         }
 
-        // Candlestick Pattern Detection - Fixed hammer detection
+        // Candlestick Pattern Detection
         if (candles && Array.isArray(candles) && candles.length >= 5) {
             const recent5 = candles.slice(-5).filter(c =>
                 c && typeof c === 'object' &&
@@ -135,10 +135,11 @@ function confluenceScoreCalculator($input) {
                     const upperShadow = c.high - Math.max(c.open, c.close);
 
                     // Enhanced hammer detection: ensure body > 0 and proper ratios
-                    // Also check for doji (body very small relative to range)
+                    const isHammer = body > 0 && lowerShadow > body * 2 && upperShadow <= body * 1.0;
+
+                    // Enhanced doji detection: body very small relative to range
                     const totalRange = c.high - c.low;
-                    const isDoji = totalRange > 0 && body / totalRange < 0.1;
-                    const isHammer = body > 0 && lowerShadow > body * 2 && upperShadow < body * 0.5;
+                    const isDoji = totalRange > 0 && body / totalRange < 0.05;
 
                     return isHammer || isDoji;
                 });

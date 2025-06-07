@@ -10,10 +10,14 @@ const createConfluenceTestData = (scenario) => {
     const baseCandles = Array(100).fill().map((_, i) => ({
         date: `2024-01-${String(i + 1).padStart(2, '0')}`,
         open: 2500,
-        high: 2550,
-        low: 2450,
-        close: 2500,
+        high: 2520, // 20-point range, small shadows
+        low: 2490,  // Lower shadow: 10 points
+        close: 2515, // Body: 15 points, Upper shadow: 5 points
         volume: 3000000
+        // This creates: body=15, lowerShadow=10, upperShadow=5, range=30
+        // Hammer test: 15>0 && 10>30 && 5<=15 = TRUE && FALSE && TRUE = FALSE
+        // Doji test: 15/30=50% < 5% = FALSE
+        // Result: NO pattern detected ✓
     }));
 
     let customIndicators, customSupport, lastClose;
@@ -25,13 +29,13 @@ const createConfluenceTestData = (scenario) => {
                 sma20: 2500,
                 sma50: 2400,
                 ema21: 2520,
-                rsi: 35, // Oversold
-                stochRsi: 0.25, // Oversold
-                macd: { macdLine: 5, signalLine: 3, histogram: 2 }, // Bullish crossover
+                rsi: 35,
+                stochRsi: 0.25,
+                macd: { macdLine: 5, signalLine: 3, histogram: 2 },
                 bollingerBands: { upper: 2800, middle: 2500, lower: 2200 },
-                currentVolume: 8000000, // 2x volSMA20
+                currentVolume: 8100000, // Fixed volume for sustained breakout
                 volSMA20: 4000000,
-                volSMA5: 6000000 // 1.5x volSMA20
+                volSMA5: 6100000
             };
             customSupport = {
                 tests: 3,
@@ -40,6 +44,7 @@ const createConfluenceTestData = (scenario) => {
                 strength: 1.5
             };
             break;
+
 
         case 'bearish_setup':
             lastClose = 2300;
@@ -87,16 +92,19 @@ const createConfluenceTestData = (scenario) => {
 
         case 'hammer_pattern':
             lastClose = 2500;
-            // Create candles with hammer pattern in recent 5
+            // Create proper hammer pattern
             const hammeredCandles = [...baseCandles];
-            // Create a proper hammer: long lower shadow, small body, small upper shadow
             hammeredCandles[hammeredCandles.length - 2] = {
                 date: '2024-06-05',
                 open: 2480,
-                high: 2485, // Small upper shadow (5 points)
-                low: 2420,  // Long lower shadow (60 points from body)
-                close: 2475, // Close near open (body = 5 points)
+                high: 2481, // Upper shadow: 1 point
+                low: 2420,  // Lower shadow: 59 points
+                close: 2481, // Body: 1 point
                 volume: 5000000
+                // This creates: body=1, lowerShadow=59, upperShadow=0, range=61
+                // Hammer test: 1>0 && 59>2 && 0<=1 = TRUE && TRUE && TRUE = TRUE ✓
+                // Doji test: 1/61=1.6% < 5% = TRUE ✓
+                // Result: Pattern detected ✓
             };
 
             return {
@@ -105,7 +113,7 @@ const createConfluenceTestData = (scenario) => {
                 candles: hammeredCandles,
                 lastClose: lastClose,
                 indicators: {
-                    sma20: 2520, // Basic uptrend condition
+                    sma20: 2520,
                     sma50: 2400,
                     ema21: 2520,
                     rsi: 45,
@@ -149,10 +157,10 @@ const createConfluenceTestData = (scenario) => {
                 bollingerBands: { upper: 2800, middle: 2500, lower: 2200 },
                 // CONDITIONS FOR SUSTAINED VOLUME BREAKOUT:
                 // currentVolume > volSMA20 * 2 AND volSMA5 > volSMA20 * 1.5
-                // Make values clearly ABOVE thresholds to avoid boundary issues
-                currentVolume: 8500000, // 2.125x volSMA20 (clearly > 2x)
+                // Use values clearly ABOVE thresholds to avoid boundary issues
+                currentVolume: 8100000, // 2.025x volSMA20 (clearly > 2x) - FIXED FROM 8500000
                 volSMA20: 4000000,
-                volSMA5: 6200000 // 1.55x volSMA20 (clearly > 1.5x)
+                volSMA5: 6100000 // 1.525x volSMA20 (clearly > 1.5x) - FIXED FROM 6200000
             };
             customSupport = {
                 tests: 2, // Change to NOT trigger "Strong support"
@@ -174,9 +182,9 @@ const createConfluenceTestData = (scenario) => {
                 bollingerBands: { upper: 2800, middle: 2500, lower: 2200 },
                 // CONDITIONS FOR VOLUME SPIKE ONLY:
                 // currentVolume > volSMA20 * 1.5 BUT volSMA5 <= volSMA20 * 1.5
-                currentVolume: 6500000, // 1.625x volSMA20 (clearly > 1.5x)
+                currentVolume: 6100000, // 1.525x volSMA20 (clearly > 1.5x) - FIXED FROM 6500000
                 volSMA20: 4000000,
-                volSMA5: 5800000 // 1.45x volSMA20 (clearly < 1.5x)
+                volSMA5: 5900000 // 1.475x volSMA20 (clearly < 1.5x) - FIXED FROM 5800000
             };
             customSupport = {
                 tests: 2, // Only "Reliable support"
@@ -267,8 +275,9 @@ const createConfluenceTestData = (scenario) => {
                 volSMA20: 4000000,
                 volSMA5: 4000000
             };
-            customSupport = mockSupportResistance.support;
             lastClose = 2500;
+            customIndicators = mockIndicators;
+            customSupport = mockSupportResistance.support;
     }
 
     return {
