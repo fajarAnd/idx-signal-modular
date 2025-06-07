@@ -36,42 +36,56 @@ function technicalIndicatorsCalculator($input) {
     };
 
     const RSI = (arr, n = 14) => {
-        if (!arr || !Array.isArray(arr) || arr.length < n + 1) return 50;
+        if (!arr || !Array.isArray(arr) || arr.length < n + 1) {
+            return 50;
+        }
 
-        let gains = 0, losses = 0, validPairs = 0;
+        let gains = 0;
+        let losses = 0;
 
-        // Calculate over the last n periods
-        for (let i = Math.max(0, arr.length - n - 1); i < arr.length - 1; i++) {
-            if (arr[i] && arr[i + 1] &&
-                typeof arr[i].close === 'number' && !isNaN(arr[i].close) &&
-                typeof arr[i + 1].close === 'number' && !isNaN(arr[i + 1].close)) {
+        // Calculate exactly n price changes from the most recent data
+        for (let i = arr.length - n - 1; i < arr.length - 1; i++) {
+            if (i < 0) continue;
 
-                const diff = arr[i + 1].close - arr[i].close;
-                if (diff >= 0) {
-                    gains += diff;
-                } else {
-                    losses += Math.abs(diff);
-                }
-                validPairs++;
+            const current = arr[i];
+            const next = arr[i + 1];
+
+            if (!current || !next ||
+                typeof current.close !== 'number' || isNaN(current.close) ||
+                typeof next.close !== 'number' || isNaN(next.close)) {
+                continue;
+            }
+
+            const change = next.close - current.close;
+
+            if (change > 0) {
+                gains += change;
+            } else if (change < 0) {
+                losses += Math.abs(change);
             }
         }
 
-        // Need at least some valid pairs to calculate RSI
-        if (validPairs === 0) return 50;
+        // Calculate averages
+        const avgGain = gains / n;
+        const avgLoss = losses / n;
 
-        // Average gains and losses
-        const avgGains = gains / validPairs;
-        const avgLosses = losses / validPairs;
+        // Handle edge cases to ensure result is always > 0 and < 100
+        if (avgLoss === 0) {
+            return avgGain > 0 ? 99.9 : 50;
+        }
 
-        // Prevent division by zero
-        if (avgLosses === 0) return avgGains > 0 ? 100 : 50;
+        if (avgGain === 0) {
+            return 0.1; // Very low but > 0 for pure downtrend
+        }
 
-        const rs = avgGains / avgLosses;
+        // Standard RSI formula
+        const rs = avgGain / avgLoss;
         const rsi = 100 - (100 / (1 + rs));
 
-        // Ensure RSI is within valid range
-        return Math.max(0, Math.min(100, rsi));
+        // Ensure result is always within (0, 100) range
+        return Math.max(0.1, Math.min(99.9, rsi));
     };
+
 
     const MACD = (arr) => {
         if (!arr || !Array.isArray(arr) || arr.length < 26) return { macdLine: 0, signalLine: 0, histogram: 0 };

@@ -48,48 +48,24 @@ const createIndicatorTestData = (scenario) => {
             };
 
         case 'trending_down':
-            // Create consistent downtrending data for RSI testing
+            // Create GUARANTEED downtrend data without random elements
             const downtrendCandles = [];
-            let currentPrice = 3000;
+            let price = 100;
 
-            // Create 15 periods of mixed movement first (neutral)
-            for (let i = 0; i < 15; i++) {
-                const change = (Math.random() - 0.5) * 20; // ±10 point random movement
-                const open = currentPrice;
-                const close = open + change;
-                const high = Math.max(open, close) + Math.random() * 5;
-                const low = Math.min(open, close) - Math.random() * 5;
+            // Create 50 candles with pure downtrend
+            for (let i = 0; i < 50; i++) {
+                const decline = 1; // Consistent 1-point decline per period
 
                 downtrendCandles.push({
                     date: `2024-01-${String(i + 1).padStart(2, '0')}`,
-                    open: Math.round(open),
-                    high: Math.round(high),
-                    low: Math.round(low),
-                    close: Math.round(close),
-                    volume: 1000000 + Math.random() * 500000
+                    open: price,
+                    high: price + 0.1, // Minimal high
+                    low: price - decline - 0.1, // Minimal low
+                    close: price - decline, // Consistent decline
+                    volume: 1000000 + i * 1000 // Increasing volume
                 });
 
-                currentPrice = close;
-            }
-
-            // Create consistent downtrend for the last 35 periods to ensure RSI < 50
-            for (let i = 15; i < 50; i++) {
-                const decline = 15 + (Math.random() * 15); // 15-30 point decline per period
-                const open = currentPrice;
-                const close = open - decline;
-                const high = open + (Math.random() * 5); // Small upward wick
-                const low = close - (Math.random() * 5); // Small downward wick
-
-                downtrendCandles.push({
-                    date: `2024-01-${String(i + 1).padStart(2, '0')}`,
-                    open: Math.round(open),
-                    high: Math.round(Math.max(open, close, high)),
-                    low: Math.round(Math.min(open, close, low)),
-                    close: Math.round(close),
-                    volume: 1000000 + Math.random() * 500000
-                });
-
-                currentPrice = close;
+                price = price - decline; // Update price for next iteration
             }
 
             return {

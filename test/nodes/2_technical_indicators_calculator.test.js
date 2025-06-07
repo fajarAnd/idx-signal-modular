@@ -91,6 +91,32 @@ describe('Technical Indicators Calculator Node', () => {
             expect(indicatorHelpers.isDefaultRSI(result[0].json.indicators.rsi)).to.be.true;
         });
 
+        it('should debug RSI calculation manually', () => {
+            // Create minimal downtrend test
+            const simpleCandles = [];
+            for (let i = 0; i < 20; i++) {
+                simpleCandles.push({
+                    close: 100 - i // Simple 1-point decline: 100, 99, 98, 97...
+                });
+            }
+
+            const testData = [{
+                ticker: 'SIMPLE_TEST',
+                candles: simpleCandles,
+                lastClose: simpleCandles[simpleCandles.length - 1].close
+            }];
+
+            const mockInput = createMockInput(testData);
+            const result = technicalIndicatorsCalculator(mockInput);
+
+            const rsi = result[0].json.indicators.rsi;
+            console.log('Simple downtrend RSI:', rsi);
+
+            // This MUST be < 50 and > 0
+            expect(rsi).to.be.lessThan(50);
+            expect(rsi).to.be.greaterThan(0);
+        });
+
         it('should handle downtrend correctly', () => {
             const testData = [indicatorTestScenarios.trending_down.data];
             const mockInput = createMockInput(testData);
