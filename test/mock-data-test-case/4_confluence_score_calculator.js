@@ -147,11 +147,19 @@ const createConfluenceTestData = (scenario) => {
                 stochRsi: 0.5,
                 macd: { macdLine: 0, signalLine: 0, histogram: 0 },
                 bollingerBands: { upper: 2800, middle: 2500, lower: 2200 },
-                currentVolume: 8000000, // 2x volSMA20
+                // CONDITIONS FOR SUSTAINED VOLUME BREAKOUT:
+                // currentVolume > volSMA20 * 2 AND volSMA5 > volSMA20 * 1.5
+                // Make values clearly ABOVE thresholds to avoid boundary issues
+                currentVolume: 8500000, // 2.125x volSMA20 (clearly > 2x)
                 volSMA20: 4000000,
-                volSMA5: 6000000 // 1.5x volSMA20
+                volSMA5: 6200000 // 1.55x volSMA20 (clearly > 1.5x)
             };
-            customSupport = mockSupportResistance.support;
+            customSupport = {
+                tests: 2, // Change to NOT trigger "Strong support"
+                age: 8,   // Only "Reliable support"
+                price: 2400,
+                strength: 1.2
+            };
             break;
 
         case 'volume_spike':
@@ -164,11 +172,18 @@ const createConfluenceTestData = (scenario) => {
                 stochRsi: 0.5,
                 macd: { macdLine: 0, signalLine: 0, histogram: 0 },
                 bollingerBands: { upper: 2800, middle: 2500, lower: 2200 },
-                currentVolume: 6000000, // 1.5x volSMA20
+                // CONDITIONS FOR VOLUME SPIKE ONLY:
+                // currentVolume > volSMA20 * 1.5 BUT volSMA5 <= volSMA20 * 1.5
+                currentVolume: 6500000, // 1.625x volSMA20 (clearly > 1.5x)
                 volSMA20: 4000000,
-                volSMA5: 5000000 // 1.25x volSMA20 (not 1.5x, so no sustained breakout)
+                volSMA5: 5800000 // 1.45x volSMA20 (clearly < 1.5x)
             };
-            customSupport = mockSupportResistance.support;
+            customSupport = {
+                tests: 2, // Only "Reliable support"
+                age: 8,
+                price: 2400,
+                strength: 1.2
+            };
             break;
 
         case 'rsi_boundary_40_30':
