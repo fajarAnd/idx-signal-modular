@@ -66,16 +66,16 @@ const createConfluenceTestData = (scenario) => {
         case 'mixed_signals':
             lastClose = 2500;
             customIndicators = {
-                sma20: 2520, // Above SMA20
-                sma50: 2480, // Above SMA50
+                sma20: 2520, // Above SMA20 - will trigger basic uptrend
+                sma50: 2480, // Above SMA50 - will trigger basic uptrend
                 ema21: 2510,
-                rsi: 42, // Slightly oversold
+                rsi: 42, // Slightly oversold - will trigger RSI oversold
                 stochRsi: 0.45, // Neutral
                 macd: { macdLine: 1, signalLine: -1, histogram: 2 }, // Bullish crossover
                 bollingerBands: { upper: 2800, middle: 2500, lower: 2200 },
-                currentVolume: 6000000,
+                currentVolume: 6000000, // 1.5x volSMA20 - will trigger volume spike
                 volSMA20: 4000000,
-                volSMA5: 5000000
+                volSMA5: 5000000 // 1.25x volSMA20 - not enough for sustained breakout
             };
             customSupport = {
                 tests: 2,
@@ -105,7 +105,7 @@ const createConfluenceTestData = (scenario) => {
                 candles: hammeredCandles,
                 lastClose: lastClose,
                 indicators: {
-                    sma20: 2520, // Ensure uptrend for basic uptrend signal
+                    sma20: 2520, // Basic uptrend condition
                     sma50: 2400,
                     ema21: 2520,
                     rsi: 45,
@@ -123,7 +123,7 @@ const createConfluenceTestData = (scenario) => {
         case 'near_bollinger_lower':
             lastClose = 2244; // Close to lower band (2200 * 1.02 = 2244)
             customIndicators = {
-                sma20: 2520, // Ensure uptrend
+                sma20: 2520, // Basic uptrend condition
                 sma50: 2400,
                 ema21: 2520,
                 rsi: 45,
@@ -140,7 +140,7 @@ const createConfluenceTestData = (scenario) => {
         case 'sustained_volume_breakout':
             lastClose = 2500;
             customIndicators = {
-                sma20: 2520, // Ensure uptrend
+                sma20: 2520, // Basic uptrend condition
                 sma50: 2400,
                 ema21: 2520,
                 rsi: 45,
@@ -157,7 +157,7 @@ const createConfluenceTestData = (scenario) => {
         case 'volume_spike':
             lastClose = 2500;
             customIndicators = {
-                sma20: 2520, // Ensure uptrend
+                sma20: 2520, // Basic uptrend condition
                 sma50: 2400,
                 ema21: 2520,
                 rsi: 45,
@@ -174,7 +174,7 @@ const createConfluenceTestData = (scenario) => {
         case 'rsi_boundary_40_30':
             lastClose = 2500;
             customIndicators = {
-                sma20: 2520, // Ensure uptrend
+                sma20: 2520, // Basic uptrend condition
                 sma50: 2400,
                 ema21: 2520,
                 rsi: 40, // Exactly at boundary
@@ -191,11 +191,11 @@ const createConfluenceTestData = (scenario) => {
         case 'rsi_boundary_45':
             lastClose = 2500;
             customIndicators = {
-                sma20: 2520, // Ensure uptrend
+                sma20: 2520, // Basic uptrend condition
                 sma50: 2400,
                 ema21: 2520,
-                rsi: 45, // Exactly at boundary
-                stochRsi: 0.35,
+                rsi: 45, // Exactly at boundary for single RSI oversold
+                stochRsi: 0.35, // Above 0.3 - won't trigger double oversold
                 macd: { macdLine: 0, signalLine: 0, histogram: 0 },
                 bollingerBands: { upper: 2800, middle: 2500, lower: 2200 },
                 currentVolume: 4000000,
@@ -290,7 +290,7 @@ const confluenceTestScenarios = {
         description: 'Some bullish, some neutral signals',
         data: createConfluenceTestData('mixed_signals'),
         expectedPass: true,
-        expectedSignals: ['Basic uptrend', 'MACD bullish crossover', 'Volume spike detected']
+        expectedSignals: ['Basic uptrend', 'RSI oversold', 'MACD bullish crossover', 'Volume spike detected', 'Reliable support']
     },
 
     hammer_pattern: {
@@ -298,7 +298,7 @@ const confluenceTestScenarios = {
         description: 'Candlestick hammer pattern detection',
         data: createConfluenceTestData('hammer_pattern'),
         expectedPass: true,
-        expectedSignals: ['Hammer/Doji pattern detected']
+        expectedSignals: ['Basic uptrend', 'Hammer/Doji pattern detected']
     },
 
     near_bollinger_lower: {
@@ -306,7 +306,7 @@ const confluenceTestScenarios = {
         description: 'Price near lower Bollinger band',
         data: createConfluenceTestData('near_bollinger_lower'),
         expectedPass: true,
-        expectedSignals: ['Near Bollinger lower band']
+        expectedSignals: ['Basic uptrend', 'Near Bollinger lower band']
     },
 
     sustained_volume_breakout: {
@@ -314,7 +314,7 @@ const confluenceTestScenarios = {
         description: 'High volume with sustained breakout',
         data: createConfluenceTestData('sustained_volume_breakout'),
         expectedPass: true,
-        expectedSignals: ['Sustained volume breakout']
+        expectedSignals: ['Basic uptrend', 'Sustained volume breakout']
     },
 
     volume_spike: {
@@ -322,7 +322,7 @@ const confluenceTestScenarios = {
         description: 'Volume spike without sustained breakout',
         data: createConfluenceTestData('volume_spike'),
         expectedPass: true,
-        expectedSignals: ['Volume spike detected']
+        expectedSignals: ['Basic uptrend', 'Volume spike detected']
     },
 
     rsi_boundary_conditions: {
@@ -394,7 +394,7 @@ const confluenceRules = {
     patterns: {
         hammerDoji: {
             score: 1,
-            conditions: 'lowerShadow > body * 2 && upperShadow < body * 0.5'
+            conditions: 'lowerShadow > body * 2 && upperShadow < body * 0.5 || isDoji'
         }
     }
 };

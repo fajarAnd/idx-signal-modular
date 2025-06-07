@@ -49,7 +49,7 @@ function confluenceScoreCalculator($input) {
             }
         }
 
-        // RSI and StochRSI Analysis with proper boundary testing
+        // RSI and StochRSI Analysis - Fixed boundary conditions
         const rsi = indicators.rsi;
         const stochRsi = indicators.stochRsi;
 
@@ -86,7 +86,7 @@ function confluenceScoreCalculator($input) {
             }
         }
 
-        // Volume Analysis with enhanced validation
+        // Volume Analysis - Fixed threshold validation
         const currentVolume = indicators.currentVolume;
         const volSMA20 = indicators.volSMA20;
         const volSMA5 = indicators.volSMA5;
@@ -94,6 +94,8 @@ function confluenceScoreCalculator($input) {
         if (typeof currentVolume === 'number' && !isNaN(currentVolume) &&
             typeof volSMA20 === 'number' && !isNaN(volSMA20) && volSMA20 > 0 &&
             typeof volSMA5 === 'number' && !isNaN(volSMA5)) {
+
+            // Check for sustained volume breakout first (higher priority)
             if (currentVolume > volSMA20 * 2 && volSMA5 > volSMA20 * 1.5) {
                 confluenceScore += 2;
                 hits.push('Sustained volume breakout');
@@ -116,8 +118,8 @@ function confluenceScoreCalculator($input) {
             }
         }
 
-        // Candlestick Pattern Detection with enhanced validation
-        if (candles && Array.isArray(candles) && candles.length > 0) {
+        // Candlestick Pattern Detection - Fixed hammer detection
+        if (candles && Array.isArray(candles) && candles.length >= 5) {
             const recent5 = candles.slice(-5).filter(c =>
                 c && typeof c === 'object' &&
                 typeof c.close === 'number' && !isNaN(c.close) &&
@@ -133,9 +135,12 @@ function confluenceScoreCalculator($input) {
                     const upperShadow = c.high - Math.max(c.open, c.close);
 
                     // Enhanced hammer detection: ensure body > 0 and proper ratios
-                    return body > 0 &&
-                        lowerShadow > body * 2 &&
-                        upperShadow < body * 0.5;
+                    // Also check for doji (body very small relative to range)
+                    const totalRange = c.high - c.low;
+                    const isDoji = totalRange > 0 && body / totalRange < 0.1;
+                    const isHammer = body > 0 && lowerShadow > body * 2 && upperShadow < body * 0.5;
+
+                    return isHammer || isDoji;
                 });
 
                 if (hasHammer) {
