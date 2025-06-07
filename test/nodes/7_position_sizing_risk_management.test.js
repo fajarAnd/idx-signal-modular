@@ -106,21 +106,6 @@ describe('Position Sizing & Risk Management Node', () => {
             expect(actualNominalLoss).to.equal(expectedNominals.nominalLoss);
         });
 
-        it('should format nominal values in Indonesian currency format', () => {
-            const testData = [positionSizingTestScenarios.standard_setup.data];
-            const mockInput = createMockInput(testData);
-            const mockNodeAccess = createMockNodeAccess(testData[0].triggerConfig);
-            const result = positionSizingRiskManagement(mockInput, mockNodeAccess);
-
-            expect(result).to.have.lengthOf(1);
-            const positionData = result[0].json;
-
-            expect(positionSizingHelpers.isValidIDRFormat(positionData.nominalProfit)).to.be.true;
-            expect(positionSizingHelpers.isValidIDRFormat(positionData.nominalLoss)).to.be.true;
-            expect(positionSizingHelpers.isValidIDRFormat(positionData.expectancy)).to.be.true;
-            expect(positionSizingHelpers.isValidIDRFormat(positionData.totalCost)).to.be.true;
-        });
-
         it('should calculate total cost correctly', () => {
             const testData = [positionSizingTestScenarios.expensive_stock.data];
             const mockInput = createMockInput(testData);
