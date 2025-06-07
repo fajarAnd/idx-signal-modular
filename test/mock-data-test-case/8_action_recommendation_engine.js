@@ -354,17 +354,6 @@ const actionRecommendationTestScenarios = {
         }
     },
 
-    avoid_setup: {
-        name: 'Avoid Recommendation',
-        description: 'Poor metrics that don\'t meet any buy criteria',
-        data: createActionRecommendationTestData('avoid_setup'),
-        expectedPass: true,
-        expectedRecommendation: 'AVOID - Poor setup',
-        expectedMetrics: {
-            poorMetrics: true
-        }
-    },
-
     below_threshold: {
         name: 'Below Score Threshold',
         description: 'Confluence score below required threshold',

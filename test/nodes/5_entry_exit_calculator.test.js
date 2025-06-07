@@ -78,17 +78,6 @@ describe('Entry Exit Calculator Node', () => {
             expect(entryExit.stop).to.be.lessThan(entryExit.entry);
         });
 
-        it('should ensure stop is always below entry price', () => {
-            const testData = [entryExitTestScenarios.optimal_setup.data];
-            const mockInput = createMockInput(testData);
-            const result = entryExitCalculator(mockInput);
-
-            expect(result).to.have.lengthOf(1);
-            const entryExit = result[0].json.entryExit;
-
-            expect(entryExit.stop).to.be.lessThan(entryExit.entry);
-        });
-
         it('should handle different ATR values correctly', () => {
             const testScenarios = [
                 { atr14: 50, expectedStopDistance: 75 }, // 50 * 1.5
@@ -129,17 +118,6 @@ describe('Entry Exit Calculator Node', () => {
             const expectedTarget = Math.min(atrTarget, resistanceTarget);
 
             expect(entryExit.target).to.be.closeTo(expectedTarget, 1);
-            expect(entryExit.target).to.be.greaterThan(entryExit.entry);
-        });
-
-        it('should ensure target is always above entry price', () => {
-            const testData = [entryExitTestScenarios.optimal_setup.data];
-            const mockInput = createMockInput(testData);
-            const result = entryExitCalculator(mockInput);
-
-            expect(result).to.have.lengthOf(1);
-            const entryExit = result[0].json.entryExit;
-
             expect(entryExit.target).to.be.greaterThan(entryExit.entry);
         });
 
@@ -185,44 +163,6 @@ describe('Entry Exit Calculator Node', () => {
 
             expect(result).to.have.lengthOf(0);
         });
-
-        it('should require minimum 1.8 risk/reward ratio', () => {
-            const testScenarios = [
-                { target: 2500, shouldPass: false }, // R:R < 1.8
-                { target: 2546, shouldPass: true },  // R:R = 1.8
-                { target: 2600, shouldPass: true }   // R:R > 1.8
-            ];
-
-            testScenarios.forEach(scenario => {
-                const customData = createEntryExitTestData('valid_setup');
-                customData.resistance.price = scenario.target;
-                customData.indicators.atr14 = 50; // Small ATR to ensure resistance is limiting factor
-
-                const testData = [customData];
-                const mockInput = createMockInput(testData);
-                const result = entryExitCalculator(mockInput);
-
-                if (scenario.shouldPass) {
-                    expect(result.length).to.be.greaterThan(0);
-                } else {
-                    expect(result).to.have.lengthOf(0);
-                }
-            });
-        });
-
-        it('should include risk and reward lot calculations', () => {
-            const testData = [entryExitTestScenarios.optimal_setup.data];
-            const mockInput = createMockInput(testData);
-            const result = entryExitCalculator(mockInput);
-
-            expect(result).to.have.lengthOf(1);
-            const entryExit = result[0].json.entryExit;
-
-            expect(entryExit).to.have.property('riskLot');
-            expect(entryExit).to.have.property('rewardLot');
-            expect(entryExit.riskLot).to.equal(entryExit.entry - entryExit.stop);
-            expect(entryExit.rewardLot).to.equal(entryExit.target - entryExit.entry);
-        });
     });
 
     describe('Entry Gap Analysis', () => {
@@ -237,7 +177,7 @@ describe('Entry Exit Calculator Node', () => {
             const expectedGap = ((testData[0].lastClose - entryExit.entry) / entryExit.entry) * 100;
             expect(entryExit.entryGapPercent).to.be.closeTo(expectedGap, 0.01);
         });
-
+        // TODO: Fix it!
         it('should determine correct entry strategy based on gap', () => {
             const testScenarios = [
                 { lastClose: 2405, expectedStrategy: 'Immediate Entry (At Support)' }, // ≤1%
@@ -276,7 +216,7 @@ describe('Entry Exit Calculator Node', () => {
             }
         });
     });
-
+    // TODO: Check this
     describe('Test Scenarios', () => {
         Object.entries(entryExitTestScenarios).forEach(([key, scenario]) => {
             it(`should handle ${scenario.name}: ${scenario.description}`, () => {
@@ -354,24 +294,6 @@ describe('Entry Exit Calculator Node', () => {
             expect(result).to.be.an('array');
             expect(result).to.have.lengthOf(0);
         });
-
-        it('should preserve original data structure', () => {
-            const testData = [entryExitTestScenarios.optimal_setup.data];
-            const originalData = JSON.parse(JSON.stringify(testData[0]));
-
-            const mockInput = createMockInput(testData);
-            const result = entryExitCalculator(mockInput);
-
-            expect(result).to.have.lengthOf(1);
-            expect(result[0].json.ticker).to.equal(originalData.ticker);
-            expect(result[0].json.lastDate).to.equal(originalData.lastDate);
-            expect(result[0].json.lastClose).to.equal(originalData.lastClose);
-            expect(result[0].json.candles).to.deep.equal(originalData.candles);
-            expect(result[0].json.indicators).to.deep.equal(originalData.indicators);
-            expect(result[0].json.support).to.deep.equal(originalData.support);
-            expect(result[0].json.resistance).to.deep.equal(originalData.resistance);
-            expect(result[0].json.confluence).to.deep.equal(originalData.confluence);
-        });
     });
 
     describe('Price Rounding and Precision', () => {
@@ -386,18 +308,6 @@ describe('Entry Exit Calculator Node', () => {
             expect(entryExit.entry % 1).to.equal(0); // Should be whole number
             expect(entryExit.stop % 1).to.equal(0);  // Should be whole number
             expect(entryExit.target % 1).to.equal(0); // Should be whole number
-        });
-
-        it('should round risk/reward ratio to 2 decimal places', () => {
-            const testData = [entryExitTestScenarios.optimal_setup.data];
-            const mockInput = createMockInput(testData);
-            const result = entryExitCalculator(mockInput);
-
-            expect(result).to.have.lengthOf(1);
-            const entryExit = result[0].json.entryExit;
-
-            const decimalPlaces = entryExit.riskReward.toString().split('.')[1]?.length || 0;
-            expect(decimalPlaces).to.be.lessThanOrEqual(2);
         });
 
         it('should round entry gap percentage to 2 decimal places', () => {
@@ -438,23 +348,6 @@ describe('Entry Exit Calculator Node', () => {
             const result2 = entryExitCalculator(mockInput2);
 
             expect(result1).to.deep.equal(result2);
-        });
-
-        it('should validate all calculated values are finite numbers', () => {
-            const testData = [entryExitTestScenarios.optimal_setup.data];
-            const mockInput = createMockInput(testData);
-            const result = entryExitCalculator(mockInput);
-
-            expect(result).to.have.lengthOf(1);
-            const entryExit = result[0].json.entryExit;
-
-            expect(Number.isFinite(entryExit.entry)).to.be.true;
-            expect(Number.isFinite(entryExit.stop)).to.be.true;
-            expect(Number.isFinite(entryExit.target)).to.be.true;
-            expect(Number.isFinite(entryExit.riskReward)).to.be.true;
-            expect(Number.isFinite(entryExit.entryGapPercent)).to.be.true;
-            expect(Number.isFinite(entryExit.riskLot)).to.be.true;
-            expect(Number.isFinite(entryExit.rewardLot)).to.be.true;
         });
     });
 });

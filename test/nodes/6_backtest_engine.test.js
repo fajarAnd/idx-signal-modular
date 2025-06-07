@@ -7,6 +7,7 @@ const { createMockInput } = require('../mock-data-test-case/all_nodes_common');
 describe('Backtest Engine Node', () => {
 
     describe('Backtest Execution Logic', () => {
+        // TODO: Fix It!
         it('should execute backtest correctly for high win rate scenario', () => {
             const testData = [backtestTestScenarios.high_win_rate.data];
             const mockInput = createMockInput(testData);
@@ -195,6 +196,7 @@ describe('Backtest Engine Node', () => {
             });
         });
 
+        // TODO: Check this!
         it('should test minimum trades boundary (5 trades)', () => {
             const testScenarios = [
                 { totalTrades: 4, shouldPass: false },
@@ -354,6 +356,7 @@ describe('Backtest Engine Node', () => {
 
     describe('Test Scenarios', () => {
         Object.entries(backtestTestScenarios).forEach(([key, scenario]) => {
+            // TODO: Fix It!
             it(`should handle ${scenario.name}: ${scenario.description}`, () => {
                 const testData = [scenario.data];
                 const mockInput = createMockInput(testData);
