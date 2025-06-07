@@ -1,168 +1,14 @@
 // test/nodes/4_confluence_score_calculator.test.js
 const { expect } = require('chai');
 const confluenceScoreCalculator = require('../../src/nodes/4_confluence_score_calculator');
+const {
+    createConfluenceTestData,
+    confluenceTestScenarios,
+    confluenceHelpers
+} = require('../mock-data-test-case/4_confluence_score_calculator');
 const { createMockInput, mockSupportResistance } = require('../mock-data-test-case/all_nodes_common');
 
 describe('Confluence Score Calculator Node', () => {
-
-    // Helper function to create test data with specific indicator values
-    const createConfluenceTestData = (scenario) => {
-        const baseCandles = Array(100).fill().map((_, i) => ({
-            date: `2024-01-${String(i + 1).padStart(2, '0')}`,
-            open: 2500,
-            high: 2550,
-            low: 2450,
-            close: 2500,
-            volume: 3000000
-        }));
-
-        let customIndicators, customSupport, lastClose;
-
-        switch (scenario) {
-            case 'bullish_alignment':
-                lastClose = 2600;
-                customIndicators = {
-                    sma20: 2500,
-                    sma50: 2400,
-                    ema21: 2520,
-                    rsi: 35, // Oversold
-                    stochRsi: 0.25, // Oversold
-                    macd: { macdLine: 5, signalLine: 3, histogram: 2 }, // Bullish crossover
-                    bollingerBands: { upper: 2800, middle: 2500, lower: 2200 },
-                    currentVolume: 8000000,
-                    volSMA20: 4000000,
-                    volSMA5: 6000000
-                };
-                customSupport = {
-                    tests: 3,
-                    age: 15,
-                    price: 2400,
-                    strength: 1.5
-                };
-                break;
-
-            case 'bearish_setup':
-                lastClose = 2300;
-                customIndicators = {
-                    sma20: 2400,
-                    sma50: 2500,
-                    ema21: 2380,
-                    rsi: 65, // Overbought
-                    stochRsi: 0.75, // Overbought
-                    macd: { macdLine: -2, signalLine: 1, histogram: -3 }, // Bearish
-                    bollingerBands: { upper: 2800, middle: 2500, lower: 2200 },
-                    currentVolume: 2000000,
-                    volSMA20: 4000000,
-                    volSMA5: 3000000
-                };
-                customSupport = {
-                    tests: 1,
-                    age: 5,
-                    price: 2200,
-                    strength: 0.8
-                };
-                break;
-
-            case 'mixed_signals':
-                lastClose = 2500;
-                customIndicators = {
-                    sma20: 2520, // Above SMA20
-                    sma50: 2480, // Above SMA50
-                    ema21: 2510,
-                    rsi: 42, // Slightly oversold
-                    stochRsi: 0.45, // Neutral
-                    macd: { macdLine: 1, signalLine: -1, histogram: 2 }, // Bullish crossover
-                    bollingerBands: { upper: 2800, middle: 2500, lower: 2200 },
-                    currentVolume: 6000000,
-                    volSMA20: 4000000,
-                    volSMA5: 5000000
-                };
-                customSupport = {
-                    tests: 2,
-                    age: 8,
-                    price: 2400,
-                    strength: 1.2
-                };
-                break;
-
-            case 'hammer_pattern':
-                lastClose = 2500;
-                // Create candles with hammer pattern in recent 5
-                const hammeredCandles = [...baseCandles];
-                hammeredCandles[hammeredCandles.length - 2] = {
-                    date: '2024-06-05',
-                    open: 2480,
-                    high: 2485,
-                    low: 2440, // Long lower shadow
-                    close: 2475, // Close near open
-                    volume: 5000000
-                };
-
-                return {
-                    ticker: 'HAMMER_TEST',
-                    lastDate: '2024-06-06',
-                    candles: hammeredCandles,
-                    lastClose: lastClose,
-                    indicators: {
-                        sma20: 2500,
-                        sma50: 2400,
-                        ema21: 2520,
-                        rsi: 45,
-                        stochRsi: 0.5,
-                        macd: { macdLine: 0, signalLine: 0, histogram: 0 },
-                        bollingerBands: { upper: 2800, middle: 2500, lower: 2200 },
-                        currentVolume: 4000000,
-                        volSMA20: 4000000,
-                        volSMA5: 4000000
-                    },
-                    support: mockSupportResistance.support,
-                    resistance: mockSupportResistance.resistance
-                };
-
-            case 'near_bollinger_lower':
-                lastClose = 2244; // Close to lower band (2200)
-                customIndicators = {
-                    sma20: 2500,
-                    sma50: 2400,
-                    ema21: 2520,
-                    rsi: 45,
-                    stochRsi: 0.5,
-                    macd: { macdLine: 0, signalLine: 0, histogram: 0 },
-                    bollingerBands: { upper: 2800, middle: 2500, lower: 2200 },
-                    currentVolume: 4000000,
-                    volSMA20: 4000000,
-                    volSMA5: 4000000
-                };
-                customSupport = mockSupportResistance.support;
-                break;
-
-            default:
-                customIndicators = {
-                    sma20: 2500,
-                    sma50: 2400,
-                    ema21: 2520,
-                    rsi: 50,
-                    stochRsi: 0.5,
-                    macd: { macdLine: 0, signalLine: 0, histogram: 0 },
-                    bollingerBands: { upper: 2800, middle: 2500, lower: 2200 },
-                    currentVolume: 4000000,
-                    volSMA20: 4000000,
-                    volSMA5: 4000000
-                };
-                customSupport = mockSupportResistance.support;
-                lastClose = 2500;
-        }
-
-        return {
-            ticker: `TEST_${scenario.toUpperCase()}`,
-            lastDate: '2024-06-06',
-            candles: baseCandles,
-            lastClose: lastClose,
-            indicators: customIndicators,
-            support: customSupport,
-            resistance: mockSupportResistance.resistance
-        };
-    };
 
     describe('Trend Analysis Scoring', () => {
         it('should give maximum score for multi-timeframe bullish alignment', () => {
@@ -173,7 +19,6 @@ describe('Confluence Score Calculator Node', () => {
             expect(result).to.have.lengthOf(1);
             const confluence = result[0].json.confluence;
 
-            // Should have 'Multi-timeframe bullish alignment' hit
             expect(confluence.hits).to.include('Multi-timeframe bullish alignment');
             expect(confluence.score).to.be.greaterThanOrEqual(2);
         });
@@ -186,7 +31,6 @@ describe('Confluence Score Calculator Node', () => {
             expect(result).to.have.lengthOf(1);
             const confluence = result[0].json.confluence;
 
-            // Should have basic uptrend signal
             expect(confluence.hits.some(hit => hit.includes('uptrend'))).to.be.true;
         });
 
@@ -198,7 +42,6 @@ describe('Confluence Score Calculator Node', () => {
             expect(result).to.have.lengthOf(1);
             const confluence = result[0].json.confluence;
 
-            // Should not have trend-related hits
             expect(confluence.hits.some(hit => hit.includes('bullish alignment') || hit.includes('uptrend'))).to.be.false;
         });
 
@@ -237,11 +80,7 @@ describe('Confluence Score Calculator Node', () => {
         });
 
         it('should give partial score for RSI oversold only', () => {
-            const customData = createConfluenceTestData('mixed_signals');
-            customData.indicators.rsi = 42; // Oversold but not extreme
-            customData.indicators.stochRsi = 0.45; // Not oversold
-
-            const testData = [customData];
+            const testData = [createConfluenceTestData('rsi_boundary_45')];
             const mockInput = createMockInput(testData);
             const result = confluenceScoreCalculator(mockInput);
 
@@ -273,7 +112,7 @@ describe('Confluence Score Calculator Node', () => {
             ];
 
             testScenarios.forEach(scenario => {
-                const customData = createConfluenceTestData('mixed_signals');
+                const customData = createConfluenceTestData('rsi_boundary_40_30');
                 customData.indicators.rsi = scenario.rsi;
                 customData.indicators.stochRsi = scenario.stochRsi;
 
@@ -281,12 +120,13 @@ describe('Confluence Score Calculator Node', () => {
                 const mockInput = createMockInput(testData);
                 const result = confluenceScoreCalculator(mockInput);
 
+                expect(result).to.have.lengthOf(1);
                 const confluence = result[0].json.confluence;
 
                 if (scenario.shouldHaveDouble) {
                     expect(confluence.hits.some(hit => hit.includes('Double oversold'))).to.be.true;
                 } else if (scenario.shouldHaveSingle) {
-                    expect(confluence.hits.some(hit => hit.includes('RSI oversold'))).to.be.true;
+                    expect(confluence.hits.some(hit => hit.includes('RSI oversold') && !hit.includes('Double'))).to.be.true;
                 } else {
                     expect(confluence.hits.some(hit => hit.includes('oversold'))).to.be.false;
                 }
@@ -296,7 +136,7 @@ describe('Confluence Score Calculator Node', () => {
 
     describe('MACD Scoring', () => {
         it('should detect MACD bullish crossover', () => {
-            const testData = [createConfluenceTestData('bullish_alignment')];
+            const testData = [createConfluenceTestData('mixed_signals')];
             const mockInput = createMockInput(testData);
             const result = confluenceScoreCalculator(mockInput);
 
@@ -400,7 +240,7 @@ describe('Confluence Score Calculator Node', () => {
 
     describe('Volume Analysis Scoring', () => {
         it('should detect sustained volume breakout', () => {
-            const testData = [createConfluenceTestData('bullish_alignment')];
+            const testData = [createConfluenceTestData('sustained_volume_breakout')];
             const mockInput = createMockInput(testData);
             const result = confluenceScoreCalculator(mockInput);
 
@@ -411,11 +251,7 @@ describe('Confluence Score Calculator Node', () => {
         });
 
         it('should detect volume spike', () => {
-            const customData = createConfluenceTestData('mixed_signals');
-            customData.indicators.currentVolume = 6000000; // 1.5x of volSMA20 (4000000)
-            customData.indicators.volSMA5 = 5000000; // Not sustained (1.25x)
-
-            const testData = [customData];
+            const testData = [createConfluenceTestData('volume_spike')];
             const mockInput = createMockInput(testData);
             const result = confluenceScoreCalculator(mockInput);
 
@@ -631,7 +467,7 @@ describe('Confluence Score Calculator Node', () => {
             expect(confluence.score).to.be.greaterThan(0);
 
             // Verify score matches hits
-            // Multi-timeframe (2) + Double oversold (2) + MACD (1) + Volume (2) + Support (2) = 9
+            // Multi-timeframe (2) + Double oversold (2) + Sustained volume (2) + Strong support (2) = 8
             expect(confluence.score).to.be.greaterThanOrEqual(7);
         });
 
@@ -701,7 +537,7 @@ describe('Confluence Score Calculator Node', () => {
         });
 
         it('should handle missing indicators gracefully', () => {
-            const customData = createConfluenceTestData('bullish_alignment');
+            const customData = createConfluenceTestData('missing_indicators');
             delete customData.indicators.rsi;
             delete customData.indicators.macd;
 
@@ -729,15 +565,15 @@ describe('Confluence Score Calculator Node', () => {
         });
 
         it('should handle undefined/null indicators', () => {
-            const customData = createConfluenceTestData('mixed_signals');
-            customData.indicators.rsi = null;
-            customData.indicators.stochRsi = undefined;
-            customData.indicators.macd = null;
+            const customData = createConfluenceTestData('null_indicators');
 
             const testData = [customData];
             const mockInput = createMockInput(testData);
-            const result = confluenceScoreCalculator(mockInput);
 
+            // Should not throw error
+            expect(() => confluenceScoreCalculator(mockInput)).to.not.throw();
+
+            const result = confluenceScoreCalculator(mockInput);
             expect(result).to.have.lengthOf(1);
             // Should process without crashing
             expect(result[0].json.confluence).to.have.property('score');
