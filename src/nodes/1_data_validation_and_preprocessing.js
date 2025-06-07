@@ -17,7 +17,7 @@ function dataValidationAndPreprocessing($input) {
 
         const validCandles = candles.filter(c =>
             c &&
-            typeof c.close === 'number' && !isNaN(c.close) &&
+            typeof c.close === 'number' && !isNaN(c.close) && c.close >= 59 &&
             typeof c.open === 'number' && !isNaN(c.open) &&
             typeof c.high === 'number' && !isNaN(c.high) &&
             typeof c.low === 'number' && !isNaN(c.low) &&

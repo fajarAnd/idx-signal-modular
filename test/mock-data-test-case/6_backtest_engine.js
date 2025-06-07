@@ -11,30 +11,41 @@ const createBacktestTestData = (scenario) => {
 
     switch (scenario) {
         case 'high_win_rate':
-            // Create candles that would historically hit target more often
             customCandles = [];
             for (let i = 0; i < 150; i++) {
-                const basePrice = 2500;
                 let high, low, close;
 
-                // Every 5th candle creates a winning scenario
-                if (i % 5 === 0) {
-                    high = 2700; // Hits target at 2650
-                    low = 2420;  // Doesn't hit stop at 2350
-                    close = 2650;
+                const cycle = Math.floor(i / 2); // Every 2 candles = 1 complete trade
+                const isEntry = i % 2 === 0;     // Even index = entry candle
+                const isWin = cycle % 4 !== 3;   // 3 out of 4 cycles are wins (75%)
+
+                if (isEntry) {
+                    // Entry candle - always triggers entry
+                    high = 2500;
+                    low = 2410;  // Below entry threshold (2420 * 1.005 = 2432.1)
+                    close = 2500;
                 } else {
-                    high = basePrice + Math.random() * 50;
-                    low = basePrice - Math.random() * 50;
-                    close = basePrice + (Math.random() - 0.5) * 30;
+                    // Result candle - determines win/loss outcome
+                    if (isWin) {
+                        // WIN: price hits target
+                        high = 2700; // Above target (2650)
+                        low = 2480;  // No new entry triggered
+                        close = 2650; // Success close
+                    } else {
+                        // LOSS: price hits stop
+                        high = 2400; // Below target (2650)
+                        low = 2300;  // Below stop (2350) - triggers loss
+                        close = 2320; // Loss close
+                    }
                 }
 
                 customCandles.push({
                     date: `2024-01-${String((i % 30) + 1).padStart(2, '0')}`,
-                    open: Math.round(basePrice),
-                    high: Math.round(high),
-                    low: Math.round(low),
-                    close: Math.round(close),
-                    volume: 3000000 + Math.random() * 1000000
+                    open: 2500,
+                    high: high,
+                    low: low,
+                    close: close,
+                    volume: 3000000 + (i * 1000) // Deterministic volume
                 });
             }
 
