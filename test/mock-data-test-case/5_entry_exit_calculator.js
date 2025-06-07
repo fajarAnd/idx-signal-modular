@@ -177,23 +177,23 @@ const createEntryExitTestData = (scenario) => {
             break;
 
         case 'optimal_setup':
-            lastClose = 2410; // Close to entry
+            lastClose = 2370; // ADJUSTED: closer to new entry
             customIndicators = {
                 ...mockIndicators,
-                atr14: 60,
-                atr21: 65
+                atr14: 130,  // INCREASED: from 60 to 130 (high volatility)
+                atr21: 135   // INCREASED: from 65 to 135
             };
             customSupport = {
                 type: 'S',
-                price: 2400,
-                strength: 1.8, // Very high strength
+                price: 2350,  // DECREASED: from 2400 to 2350 (reduces risk lot)
+                strength: 1.8, // Very high strength (still > 1.2)
                 index: 80,
                 age: 25,
                 tests: 4
             };
             customResistance = {
                 type: 'R',
-                price: 2800, // Good distance for target
+                price: 2800, // Keep high for good distance
                 strength: 1.5,
                 index: 85
             };

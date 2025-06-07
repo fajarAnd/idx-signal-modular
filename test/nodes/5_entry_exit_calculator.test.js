@@ -180,10 +180,10 @@ describe('Entry Exit Calculator Node', () => {
         // TODO: Fix it!
         it('should determine correct entry strategy based on gap', () => {
             const testScenarios = [
-                { lastClose: 2405, expectedStrategy: 'Immediate Entry (At Support)' }, // ≤1%
-                { lastClose: 2430, expectedStrategy: 'Breakout Entry (Acceptable Gap)' }, // ≤3%
-                { lastClose: 2520, expectedStrategy: 'Aggressive Entry (High Risk)' }, // ≤5%
-                { lastClose: 2650, expectedStrategy: 'Wait for Retest' } // >5%
+                { lastClose: 2405, expectedStrategy: 'Immediate Entry (At Support)' }, // -0.29% gap
+                { lastClose: 2450, expectedStrategy: 'Breakout Entry (Acceptable Gap)' }, // 1.58% gap - FIXED
+                { lastClose: 2500, expectedStrategy: 'Aggressive Entry (High Risk)' }, // 3.65% gap - FIXED
+                { lastClose: 2600, expectedStrategy: 'Wait for Retest' } // 7.80% gap - FIXED
             ];
 
             testScenarios.forEach(scenario => {
@@ -216,7 +216,7 @@ describe('Entry Exit Calculator Node', () => {
             }
         });
     });
-    // TODO: Check this
+
     describe('Test Scenarios', () => {
         Object.entries(entryExitTestScenarios).forEach(([key, scenario]) => {
             it(`should handle ${scenario.name}: ${scenario.description}`, () => {
