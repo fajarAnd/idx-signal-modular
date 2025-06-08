@@ -439,8 +439,8 @@ const positionSizingHelpers = {
     },
 
     determineMarketPhase: (lastClose, sma20, sma50) => {
-        if (lastClose > sma20 && sma20 > sma50) return 'Uptrend';
-        if (lastClose < sma20 && sma20 < sma50) return 'Downtrend';
+        if (lastClose > sma20 && sma20 >= sma50) return 'Uptrend';
+        if (lastClose < sma20 && sma20 <= sma50) return 'Downtrend';
         return 'Sideways';
     },
 

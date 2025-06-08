@@ -24,8 +24,8 @@ function positionSizingRiskManagement($input, $) {
         const expectancyRp = Math.round(backtest.winRateDec * nominalProfit - (1 - backtest.winRateDec) * nominalLoss);
         const totalCost = qty * lotValue * entryExit.entry;
 
-        const marketPhase = lastClose > indicators.sma20 && indicators.sma20 > indicators.sma50 ? 'Uptrend' :
-            lastClose < indicators.sma20 && indicators.sma20 < indicators.sma50 ? 'Downtrend' : 'Sideways';
+        const marketPhase = lastClose > indicators.sma20 && indicators.sma20 >= indicators.sma50 ? 'Uptrend' :
+            lastClose < indicators.sma20 && indicators.sma20 <= indicators.sma50 ? 'Downtrend' : 'Sideways';
 
         positionResults.push({
             json: {
