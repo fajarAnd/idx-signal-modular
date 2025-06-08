@@ -5,8 +5,9 @@
  */
 
 //extract the function from N8N node
-function backtestEngine($input) {
+function backtestEngine($input, $) {
     let backtestResults = [];
+    const currentOpenPosition = $('Get Unique Symbol').first().json.codes;
 
     for (const item of $input.all()) {
         const { ticker, lastDate, candles, lastClose, indicators, support, resistance, confluence, entryExit } = item.json;
@@ -42,8 +43,11 @@ function backtestEngine($input) {
 
         const winRateDec = wins / total;
 
-        if (winRateDec < 0.52) continue;
-        if (total < 5) continue;
+        // Add condition Current Open Position
+        if(!currentOpenPosition.includes(ticker)) {
+            if (winRateDec < 0.52) continue;
+            if (total < 5) continue;
+        }
 
         const backtestWinRate = +(winRateDec * 100).toFixed(1);
 

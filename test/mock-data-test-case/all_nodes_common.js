@@ -262,6 +262,15 @@ const errorScenarios = {
     }
 };
 
+const mockCurrentOpenPosition = {
+    "codes": [
+        "ULTJ",
+        "HAIS",
+        "BIPI",
+        "MAPI"
+    ]
+}
+
 module.exports = {
     createMockInput,
     createMockNodeAccess,
@@ -275,5 +284,6 @@ module.exports = {
     triggerDataVariations,
     generatePerformanceTestData,
     validationHelpers,
-    errorScenarios
+    errorScenarios,
+    mockCurrentOpenPosition
 };

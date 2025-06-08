@@ -2,7 +2,7 @@
 const { expect } = require('chai');
 const backtestEngine = require('../../src/nodes/6_backtest_engine');
 const { backtestTestScenarios, backtestHelpers, createBacktestTestData, backtestCriteria } = require('../mock-data-test-case/6_backtest_engine');
-const { createMockInput } = require('../mock-data-test-case/all_nodes_common');
+const { createMockInput, createMockNodeAccess, mockCurrentOpenPosition} = require('../mock-data-test-case/all_nodes_common');
 
 describe('Backtest Engine Node', () => {
 
@@ -10,7 +10,8 @@ describe('Backtest Engine Node', () => {
         it('should execute backtest correctly for high win rate scenario', () => {
             const testData = [backtestTestScenarios.high_win_rate.data];
             const mockInput = createMockInput(testData);
-            const result = backtestEngine(mockInput);
+            const mockNodeAccess = createMockNodeAccess(mockCurrentOpenPosition);
+            const result = backtestEngine(mockInput, mockNodeAccess);
 
             expect(result).to.have.lengthOf(1);
             expect(result[0].json).to.have.property('backtest');
@@ -24,7 +25,8 @@ describe('Backtest Engine Node', () => {
         it('should simulate trades correctly by checking entry conditions', () => {
             const testData = [backtestTestScenarios.mixed_results.data];
             const mockInput = createMockInput(testData);
-            const result = backtestEngine(mockInput);
+            const mockNodeAccess = createMockNodeAccess(mockCurrentOpenPosition);
+            const result = backtestEngine(mockInput, mockNodeAccess);
 
             expect(result).to.have.lengthOf(1);
             const backtest = result[0].json.backtest;
@@ -52,7 +54,8 @@ describe('Backtest Engine Node', () => {
 
             const testData = [customData];
             const mockInput = createMockInput(testData);
-            const result = backtestEngine(mockInput);
+            const mockNodeAccess = createMockNodeAccess(mockCurrentOpenPosition);
+            const result = backtestEngine(mockInput, mockNodeAccess);
 
             expect(result).to.have.lengthOf(1);
             const backtest = result[0].json.backtest;
@@ -88,7 +91,8 @@ describe('Backtest Engine Node', () => {
 
             const testData = [customData];
             const mockInput = createMockInput(testData);
-            const result = backtestEngine(mockInput);
+            const mockNodeAccess = createMockNodeAccess(mockCurrentOpenPosition);
+            const result = backtestEngine(mockInput, mockNodeAccess);
 
             expect(result).to.have.lengthOf(1);
             const backtest = result[0].json.backtest;
@@ -124,7 +128,8 @@ describe('Backtest Engine Node', () => {
 
             const testData = [customData];
             const mockInput = createMockInput(testData);
-            const result = backtestEngine(mockInput);
+            const mockNodeAccess = createMockNodeAccess(mockCurrentOpenPosition);
+            const result = backtestEngine(mockInput, mockNodeAccess);
 
             expect(result).to.have.lengthOf(1);
             const backtest = result[0].json.backtest;
@@ -136,7 +141,8 @@ describe('Backtest Engine Node', () => {
         it('should filter out setups with low win rate (< 52%)', () => {
             const testData = [backtestTestScenarios.low_win_rate.data];
             const mockInput = createMockInput(testData);
-            const result = backtestEngine(mockInput);
+            const mockNodeAccess = createMockNodeAccess(mockCurrentOpenPosition);
+            const result = backtestEngine(mockInput, mockNodeAccess);
 
             expect(result).to.have.lengthOf(0);
         });
@@ -144,7 +150,8 @@ describe('Backtest Engine Node', () => {
         it('should filter out setups with insufficient trades (< 5)', () => {
             const testData = [backtestTestScenarios.insufficient_trades.data];
             const mockInput = createMockInput(testData);
-            const result = backtestEngine(mockInput);
+            const mockNodeAccess = createMockNodeAccess(mockCurrentOpenPosition);
+            const result = backtestEngine(mockInput, mockNodeAccess);
 
             expect(result).to.have.lengthOf(0);
         });
@@ -194,74 +201,14 @@ describe('Backtest Engine Node', () => {
                 }
             });
         });
-
-
-        it.skip('should test minimum trades boundary (5 trades)', () => {
-            const testScenarios = [
-                { totalTrades: 4, shouldPass: false },
-                { totalTrades: 5, shouldPass: true },
-                { totalTrades: 6, shouldPass: true }
-            ];
-
-            testScenarios.forEach(scenario => {
-                const customData = createBacktestTestData('high_win_rate');
-
-                // Create exact number of trades with good win rate
-                customData.candles = [];
-                for (let i = 0; i < 100; i++) {
-                    const isTradeCandle = i >= 30 && i < 30 + scenario.totalTrades;
-                    const isOutcomeCandle = i >= 31 && i <= 30 + scenario.totalTrades; // Outcome in next candle
-                    const tradeIndex = i - 30;
-                    const isWin = isOutcomeCandle && tradeIndex <= Math.ceil(scenario.totalTrades * 0.7); // 70% win rate
-
-                    let high, low;
-                    if (isTradeCandle) {
-                        // Entry candle - trigger entry but don't resolve outcome yet
-                        high = 2550;
-                        low = customData.entryExit.entry - 5; // Triggers entry
-                    } else if (isOutcomeCandle) {
-                        // Outcome candle - resolve the trade
-                        if (isWin) {
-                            high = customData.entryExit.target + 10; // Hits target
-                            low = 2450;
-                        } else {
-                            high = 2550;
-                            low = customData.entryExit.stop - 10; // Hits stop
-                        }
-                    } else {
-                        // Normal candle - no trade activity
-                        high = 2550;
-                        low = 2450;
-                    }
-
-                    customData.candles.push({
-                        date: `2024-01-${String(i + 1).padStart(2, '0')}`,
-                        open: 2500,
-                        high: high,
-                        low: low,
-                        close: 2500,
-                        volume: 3000000
-                    });
-                }
-
-                const testData = [customData];
-                const mockInput = createMockInput(testData);
-                const result = backtestEngine(mockInput);
-
-                if (scenario.shouldPass) {
-                    expect(result.length).to.be.greaterThan(0);
-                } else {
-                    expect(result).to.have.lengthOf(0);
-                }
-            });
-        });
     });
 
     describe('Confluence Bonus System', () => {
         it('should add bonus for high win rate (> 70%) with sufficient trades (≥ 8)', () => {
             const testData = [backtestTestScenarios.excellent_performance.data];
             const mockInput = createMockInput(testData);
-            const result = backtestEngine(mockInput);
+            const mockNodeAccess = createMockNodeAccess(mockCurrentOpenPosition);
+            const result = backtestEngine(mockInput, mockNodeAccess);
 
             expect(result).to.have.lengthOf(1);
             const originalConfluence = testData[0].confluence.score;
@@ -282,7 +229,8 @@ describe('Backtest Engine Node', () => {
 
             const testData = [customData];
             const mockInput = createMockInput(testData);
-            const result = backtestEngine(mockInput);
+            const mockNodeAccess = createMockNodeAccess(mockCurrentOpenPosition);
+            const result = backtestEngine(mockInput, mockNodeAccess);
 
             if (result.length > 0) {
                 const resultConfluence = result[0].json.confluence.score;
@@ -293,7 +241,8 @@ describe('Backtest Engine Node', () => {
         it('should add both bonuses when criteria are met', () => {
             const testData = [backtestTestScenarios.excellent_performance.data];
             const mockInput = createMockInput(testData);
-            const result = backtestEngine(mockInput);
+            const mockNodeAccess = createMockNodeAccess(mockCurrentOpenPosition);
+            const result = backtestEngine(mockInput, mockNodeAccess);
 
             expect(result).to.have.lengthOf(1);
             const originalConfluence = testData[0].confluence.score;
@@ -310,7 +259,8 @@ describe('Backtest Engine Node', () => {
         it('should not add bonus if criteria are not met', () => {
             const testData = [backtestTestScenarios.mixed_results.data];
             const mockInput = createMockInput(testData);
-            const result = backtestEngine(mockInput);
+            const mockNodeAccess = createMockNodeAccess(mockCurrentOpenPosition);
+            const result = backtestEngine(mockInput, mockNodeAccess);
 
             if (result.length > 0) {
                 const originalConfluence = testData[0].confluence.score;
@@ -336,7 +286,8 @@ describe('Backtest Engine Node', () => {
             const expectedStartIndex = Math.max(14, candlesLength - expectedRecentPeriod);
 
             const mockInput = createMockInput(testData);
-            const result = backtestEngine(mockInput);
+            const mockNodeAccess = createMockNodeAccess(mockCurrentOpenPosition);
+            const result = backtestEngine(mockInput, mockNodeAccess);
 
             expect(result).to.have.lengthOf(1);
 
@@ -351,7 +302,8 @@ describe('Backtest Engine Node', () => {
 
             const testData = [customData];
             const mockInput = createMockInput(testData);
-            const result = backtestEngine(mockInput);
+            const mockNodeAccess = createMockNodeAccess(mockCurrentOpenPosition);
+            const result = backtestEngine(mockInput, mockNodeAccess);
 
             // Should still process but may have fewer trades
             expect(result).to.be.an('array');
@@ -368,7 +320,8 @@ describe('Backtest Engine Node', () => {
 
             const testData = [customData];
             const mockInput = createMockInput(testData);
-            const result = backtestEngine(mockInput);
+            const mockNodeAccess = createMockNodeAccess(mockCurrentOpenPosition);
+            const result = backtestEngine(mockInput, mockNodeAccess);
 
             // The early candles should not affect backtest results significantly
             expect(result).to.be.an('array');
@@ -380,7 +333,8 @@ describe('Backtest Engine Node', () => {
             it.skip(`should handle ${scenario.name}: ${scenario.description}`, () => {
                 const testData = [scenario.data];
                 const mockInput = createMockInput(testData);
-                const result = backtestEngine(mockInput);
+                const mockNodeAccess = createMockNodeAccess(mockCurrentOpenPosition);
+                const result = backtestEngine(mockInput, mockNodeAccess);
 
                 if (scenario.expectedPass) {
                     expect(result).to.have.lengthOf(1);
@@ -425,7 +379,8 @@ describe('Backtest Engine Node', () => {
     describe('Edge Cases and Error Handling', () => {
         it('should handle empty input array', () => {
             const mockInput = createMockInput([]);
-            const result = backtestEngine(mockInput);
+            const mockNodeAccess = createMockNodeAccess(mockCurrentOpenPosition);
+            const result = backtestEngine(mockInput, mockNodeAccess);
 
             expect(result).to.be.an('array');
             expect(result).to.have.lengthOf(0);
@@ -434,7 +389,8 @@ describe('Backtest Engine Node', () => {
         it('should handle invalid candle data gracefully', () => {
             const testData = [backtestTestScenarios.invalid_candles.data];
             const mockInput = createMockInput(testData);
-            const result = backtestEngine(mockInput);
+            const mockNodeAccess = createMockNodeAccess(mockCurrentOpenPosition);
+            const result = backtestEngine(mockInput, mockNodeAccess);
 
             // Should not crash, may have fewer or no results
             expect(result).to.be.an('array');
@@ -464,7 +420,8 @@ describe('Backtest Engine Node', () => {
 
             const testData = [customData];
             const mockInput = createMockInput(testData);
-            const result = backtestEngine(mockInput);
+            const mockNodeAccess = createMockNodeAccess(mockCurrentOpenPosition);
+            const result = backtestEngine(mockInput, mockNodeAccess);
 
             // Should handle gracefully
             expect(result).to.be.an('array');
@@ -480,7 +437,8 @@ describe('Backtest Engine Node', () => {
 
             const testData = [customData];
             const mockInput = createMockInput(testData);
-            const result = backtestEngine(mockInput);
+            const mockNodeAccess = createMockNodeAccess(mockCurrentOpenPosition);
+            const result = backtestEngine(mockInput, mockNodeAccess);
 
             expect(result).to.have.lengthOf(0);
         });
@@ -490,7 +448,8 @@ describe('Backtest Engine Node', () => {
             const originalData = JSON.parse(JSON.stringify(testData[0]));
 
             const mockInput = createMockInput(testData);
-            const result = backtestEngine(mockInput);
+            const mockNodeAccess = createMockNodeAccess(mockCurrentOpenPosition);
+            const result = backtestEngine(mockInput, mockNodeAccess);
 
             expect(result).to.have.lengthOf(1);
             expect(result[0].json.ticker).to.equal(originalData.ticker);
@@ -508,7 +467,8 @@ describe('Backtest Engine Node', () => {
         it('should calculate win rate percentage correctly', () => {
             const testData = [backtestTestScenarios.mixed_results.data];
             const mockInput = createMockInput(testData);
-            const result = backtestEngine(mockInput);
+            const mockNodeAccess = createMockNodeAccess(mockCurrentOpenPosition);
+            const result = backtestEngine(mockInput, mockNodeAccess);
 
             if (result.length > 0) {
                 const backtest = result[0].json.backtest;
@@ -527,7 +487,8 @@ describe('Backtest Engine Node', () => {
         it('should round win rate to 1 decimal place', () => {
             const testData = [backtestTestScenarios.high_win_rate.data];
             const mockInput = createMockInput(testData);
-            const result = backtestEngine(mockInput);
+            const mockNodeAccess = createMockNodeAccess(mockCurrentOpenPosition);
+            const result = backtestEngine(mockInput, mockNodeAccess);
 
             if (result.length > 0) {
                 const backtest = result[0].json.backtest;
@@ -540,7 +501,8 @@ describe('Backtest Engine Node', () => {
         it('should maintain consistency between winRateDec and backtestWinRate', () => {
             const testData = [backtestTestScenarios.excellent_performance.data];
             const mockInput = createMockInput(testData);
-            const result = backtestEngine(mockInput);
+            const mockNodeAccess = createMockNodeAccess(mockCurrentOpenPosition);
+            const result = backtestEngine(mockInput, mockNodeAccess);
 
             if (result.length > 0) {
                 const backtest = result[0].json.backtest;
@@ -563,7 +525,8 @@ describe('Backtest Engine Node', () => {
 
             const mockInput = createMockInput(largeTestData);
             const startTime = Date.now();
-            const result = backtestEngine(mockInput);
+            const mockNodeAccess = createMockNodeAccess(mockCurrentOpenPosition);
+            const result = backtestEngine(mockInput, mockNodeAccess);
             const endTime = Date.now();
 
             expect(endTime - startTime).to.be.lessThan(10000); // Should complete within 10 seconds
@@ -574,9 +537,9 @@ describe('Backtest Engine Node', () => {
             const testData = [backtestTestScenarios.high_win_rate.data];
             const mockInput1 = createMockInput(testData);
             const mockInput2 = createMockInput(testData);
-
-            const result1 = backtestEngine(mockInput1);
-            const result2 = backtestEngine(mockInput2);
+            const mockNodeAccess = createMockNodeAccess(mockCurrentOpenPosition);
+            const result1 = backtestEngine(mockInput1, mockNodeAccess);
+            const result2 = backtestEngine(mockInput2, mockNodeAccess);
 
             expect(result1).to.deep.equal(result2);
         });
@@ -584,7 +547,9 @@ describe('Backtest Engine Node', () => {
         it('should validate all backtest metrics are within expected ranges', () => {
             const testData = [backtestTestScenarios.excellent_performance.data];
             const mockInput = createMockInput(testData);
-            const result = backtestEngine(mockInput);
+            const mockNodeAccess = createMockNodeAccess(mockCurrentOpenPosition);
+            const result = backtestEngine(mockInput, mockNodeAccess);
+
 
             if (result.length > 0) {
                 const backtest = result[0].json.backtest;
