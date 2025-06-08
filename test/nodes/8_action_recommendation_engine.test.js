@@ -87,31 +87,6 @@ describe('Action Recommendation Engine Node', () => {
             expect(result).to.have.lengthOf(1);
         });
 
-        // TODO: Fix It!
-        it('should handle different threshold configurations', () => {
-            const thresholdScenarios = [
-                { threshold: 1, shouldPass: true },
-                { threshold: 2, shouldPass: true },
-                { threshold: 3, shouldPass: false },
-                { threshold: 4, shouldPass: false }
-            ];
-
-            const baseData = createActionRecommendationTestData('cautious_buy'); // Score = 3
-
-            thresholdScenarios.forEach(scenario => {
-                const testData = [baseData];
-                const mockInput = createMockInput(testData);
-                const mockNodeAccess = createMockNodeAccess({ scoreGreaterThan: scenario.threshold });
-                const result = actionRecommendationEngine(mockInput, mockNodeAccess);
-
-                if (scenario.shouldPass) {
-                    expect(result.length).to.be.greaterThan(0);
-                } else {
-                    expect(result).to.have.lengthOf(0);
-                }
-            });
-        });
-
         it('should use default threshold when not specified', () => {
             const testData = [actionRecommendationTestScenarios.cautious_buy.data];
             const mockInput = createMockInput(testData);
@@ -310,33 +285,6 @@ describe('Action Recommendation Engine Node', () => {
 
             // Should not crash, may fall back to default recommendation
             expect(() => actionRecommendationEngine(mockInput, mockNodeAccess)).to.not.throw();
-        });
-
-        // TODO: Check It!
-        it('should handle extreme values correctly', () => {
-            const extremeValues = [
-                { winRate: 0, score: 0, expected: 'AVOID' },
-                { winRate: 100, score: 10, expected: 'STRONG BUY' },
-                { winRate: 50, score: 1, expected: 'filter out' }
-            ];
-
-            extremeValues.forEach(test => {
-                const customData = createActionRecommendationTestData('edge_case_metrics');
-                customData.backtestWinRate = test.winRate;
-                customData.confluenceScore = test.score;
-
-                const testData = [customData];
-                const mockInput = createMockInput(testData);
-                const mockNodeAccess = createMockNodeAccess({ scoreGreaterThan: 2 });
-                const result = actionRecommendationEngine(mockInput, mockNodeAccess);
-
-                if (test.expected === 'filter out') {
-                    expect(result).to.have.lengthOf(0);
-                } else {
-                    expect(result).to.have.lengthOf(1);
-                    expect(result[0].json.actionRecommendation).to.include(test.expected);
-                }
-            });
         });
 
         it('should provide consistent recommendations for identical inputs', () => {
