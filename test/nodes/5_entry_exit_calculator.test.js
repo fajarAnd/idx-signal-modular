@@ -2,7 +2,7 @@
 const { expect } = require('chai');
 const entryExitCalculator = require('../../src/nodes/5_entry_exit_calculator');
 const { entryExitTestScenarios, entryExitHelpers, createEntryExitTestData } = require('../mock-data-test-case/5_entry_exit_calculator');
-const { createMockInput } = require('../mock-data-test-case/all_nodes_common');
+const { createMockInput, createMockNodeAccess, mockCurrentOpenPosition} = require('../mock-data-test-case/all_nodes_common');
 
 describe('Entry Exit Calculator Node', () => {
 
@@ -10,7 +10,8 @@ describe('Entry Exit Calculator Node', () => {
         it('should calculate entry with adjustment for high strength support', () => {
             const testData = [entryExitTestScenarios.high_strength_support.data];
             const mockInput = createMockInput(testData);
-            const result = entryExitCalculator(mockInput);
+            const mockNodeAccess = createMockNodeAccess(mockCurrentOpenPosition);
+            const result = entryExitCalculator(mockInput, mockNodeAccess);
 
             expect(result).to.have.lengthOf(1);
             const entryExit = result[0].json.entryExit;
@@ -25,7 +26,8 @@ describe('Entry Exit Calculator Node', () => {
         it('should calculate entry without adjustment for low strength support', () => {
             const testData = [entryExitTestScenarios.low_strength_support.data];
             const mockInput = createMockInput(testData);
-            const result = entryExitCalculator(mockInput);
+            const mockNodeAccess = createMockNodeAccess(mockCurrentOpenPosition);
+            const result = entryExitCalculator(mockInput, mockNodeAccess);
 
             expect(result).to.have.lengthOf(1);
             const entryExit = result[0].json.entryExit;
@@ -47,7 +49,8 @@ describe('Entry Exit Calculator Node', () => {
 
                 const testData = [customData];
                 const mockInput = createMockInput(testData);
-                const result = entryExitCalculator(mockInput);
+                const mockNodeAccess = createMockNodeAccess(mockCurrentOpenPosition);
+                const result = entryExitCalculator(mockInput, mockNodeAccess);
 
                 if (result.length > 0) {
                     const entryExit = result[0].json.entryExit;
@@ -65,7 +68,8 @@ describe('Entry Exit Calculator Node', () => {
         it('should use the higher of conservative and support-based stop', () => {
             const testData = [entryExitTestScenarios.valid_setup.data];
             const mockInput = createMockInput(testData);
-            const result = entryExitCalculator(mockInput);
+            const mockNodeAccess = createMockNodeAccess(mockCurrentOpenPosition);
+            const result = entryExitCalculator(mockInput, mockNodeAccess);
 
             expect(result).to.have.lengthOf(1);
             const entryExit = result[0].json.entryExit;
@@ -91,7 +95,8 @@ describe('Entry Exit Calculator Node', () => {
 
                 const testData = [customData];
                 const mockInput = createMockInput(testData);
-                const result = entryExitCalculator(mockInput);
+                const mockNodeAccess = createMockNodeAccess(mockCurrentOpenPosition);
+                const result = entryExitCalculator(mockInput, mockNodeAccess);
 
                 if (result.length > 0) {
                     const entryExit = result[0].json.entryExit;
@@ -108,7 +113,8 @@ describe('Entry Exit Calculator Node', () => {
         it('should use the lower of ATR-based and resistance-based target', () => {
             const testData = [entryExitTestScenarios.valid_setup.data];
             const mockInput = createMockInput(testData);
-            const result = entryExitCalculator(mockInput);
+            const mockNodeAccess = createMockNodeAccess(mockCurrentOpenPosition);
+            const result = entryExitCalculator(mockInput, mockNodeAccess);
 
             expect(result).to.have.lengthOf(1);
             const entryExit = result[0].json.entryExit;
@@ -128,7 +134,8 @@ describe('Entry Exit Calculator Node', () => {
 
             const testData = [customData];
             const mockInput = createMockInput(testData);
-            const result = entryExitCalculator(mockInput);
+            const mockNodeAccess = createMockNodeAccess(mockCurrentOpenPosition);
+            const result = entryExitCalculator(mockInput, mockNodeAccess);
 
             if (result.length > 0) {
                 const entryExit = result[0].json.entryExit;
@@ -141,7 +148,8 @@ describe('Entry Exit Calculator Node', () => {
         it('should calculate risk/reward ratio correctly', () => {
             const testData = [entryExitTestScenarios.valid_setup.data];
             const mockInput = createMockInput(testData);
-            const result = entryExitCalculator(mockInput);
+            const mockNodeAccess = createMockNodeAccess(mockCurrentOpenPosition);
+            const result = entryExitCalculator(mockInput, mockNodeAccess);
 
             expect(result).to.have.lengthOf(1);
             const entryExit = result[0].json.entryExit;
@@ -159,7 +167,8 @@ describe('Entry Exit Calculator Node', () => {
         it('should filter out setups with poor risk/reward ratio', () => {
             const testData = [entryExitTestScenarios.poor_risk_reward.data];
             const mockInput = createMockInput(testData);
-            const result = entryExitCalculator(mockInput);
+            const mockNodeAccess = createMockNodeAccess(mockCurrentOpenPosition);
+            const result = entryExitCalculator(mockInput, mockNodeAccess);
 
             expect(result).to.have.lengthOf(0);
         });
@@ -169,7 +178,8 @@ describe('Entry Exit Calculator Node', () => {
         it('should calculate entry gap percentage correctly', () => {
             const testData = [entryExitTestScenarios.large_entry_gap.data];
             const mockInput = createMockInput(testData);
-            const result = entryExitCalculator(mockInput);
+            const mockNodeAccess = createMockNodeAccess(mockCurrentOpenPosition);
+            const result = entryExitCalculator(mockInput, mockNodeAccess);
 
             expect(result).to.have.lengthOf(1);
             const entryExit = result[0].json.entryExit;
@@ -192,7 +202,8 @@ describe('Entry Exit Calculator Node', () => {
 
                 const testData = [customData];
                 const mockInput = createMockInput(testData);
-                const result = entryExitCalculator(mockInput);
+                const mockNodeAccess = createMockNodeAccess(mockCurrentOpenPosition);
+                const result = entryExitCalculator(mockInput, mockNodeAccess);
 
                 if (result.length > 0) {
                     const entryExit = result[0].json.entryExit;
@@ -207,7 +218,8 @@ describe('Entry Exit Calculator Node', () => {
 
             const testData = [customData];
             const mockInput = createMockInput(testData);
-            const result = entryExitCalculator(mockInput);
+            const mockNodeAccess = createMockNodeAccess(mockCurrentOpenPosition);
+            const result = entryExitCalculator(mockInput, mockNodeAccess);
 
             if (result.length > 0) {
                 const entryExit = result[0].json.entryExit;
@@ -222,7 +234,8 @@ describe('Entry Exit Calculator Node', () => {
             it(`should handle ${scenario.name}: ${scenario.description}`, () => {
                 const testData = [scenario.data];
                 const mockInput = createMockInput(testData);
-                const result = entryExitCalculator(mockInput);
+                const mockNodeAccess = createMockNodeAccess(mockCurrentOpenPosition);
+                const result = entryExitCalculator(mockInput, mockNodeAccess);
 
                 if (scenario.expectedPass) {
                     expect(result).to.have.lengthOf(1);
@@ -262,7 +275,8 @@ describe('Entry Exit Calculator Node', () => {
 
             const testData = [customData];
             const mockInput = createMockInput(testData);
-            const result = entryExitCalculator(mockInput);
+            const mockNodeAccess = createMockNodeAccess(mockCurrentOpenPosition);
+            const result = entryExitCalculator(mockInput, mockNodeAccess);
 
             expect(result).to.have.lengthOf(0);
         });
@@ -274,7 +288,8 @@ describe('Entry Exit Calculator Node', () => {
 
             const testData = [customData];
             const mockInput = createMockInput(testData);
-            const result = entryExitCalculator(mockInput);
+            const mockNodeAccess = createMockNodeAccess(mockCurrentOpenPosition);
+            const result = entryExitCalculator(mockInput, mockNodeAccess);
 
             expect(result).to.have.lengthOf(0);
         });
@@ -282,14 +297,16 @@ describe('Entry Exit Calculator Node', () => {
         it('should filter out setups with negative risk lot', () => {
             const testData = [entryExitTestScenarios.negative_risk_lot.data];
             const mockInput = createMockInput(testData);
-            const result = entryExitCalculator(mockInput);
+            const mockNodeAccess = createMockNodeAccess(mockCurrentOpenPosition);
+            const result = entryExitCalculator(mockInput, mockNodeAccess);
 
             expect(result).to.have.lengthOf(0);
         });
 
         it('should handle empty input array', () => {
             const mockInput = createMockInput([]);
-            const result = entryExitCalculator(mockInput);
+            const mockNodeAccess = createMockNodeAccess(mockCurrentOpenPosition);
+            const result = entryExitCalculator(mockInput, mockNodeAccess);
 
             expect(result).to.be.an('array');
             expect(result).to.have.lengthOf(0);
@@ -300,7 +317,8 @@ describe('Entry Exit Calculator Node', () => {
         it('should round prices to whole numbers', () => {
             const testData = [entryExitTestScenarios.valid_setup.data];
             const mockInput = createMockInput(testData);
-            const result = entryExitCalculator(mockInput);
+            const mockNodeAccess = createMockNodeAccess(mockCurrentOpenPosition);
+            const result = entryExitCalculator(mockInput, mockNodeAccess);
 
             expect(result).to.have.lengthOf(1);
             const entryExit = result[0].json.entryExit;
@@ -313,7 +331,8 @@ describe('Entry Exit Calculator Node', () => {
         it('should round entry gap percentage to 2 decimal places', () => {
             const testData = [entryExitTestScenarios.large_entry_gap.data];
             const mockInput = createMockInput(testData);
-            const result = entryExitCalculator(mockInput);
+            const mockNodeAccess = createMockNodeAccess(mockCurrentOpenPosition);
+            const result = entryExitCalculator(mockInput, mockNodeAccess);
 
             expect(result).to.have.lengthOf(1);
             const entryExit = result[0].json.entryExit;
@@ -332,7 +351,8 @@ describe('Entry Exit Calculator Node', () => {
 
             const mockInput = createMockInput(largeTestData);
             const startTime = Date.now();
-            const result = entryExitCalculator(mockInput);
+            const mockNodeAccess = createMockNodeAccess(mockCurrentOpenPosition);
+            const result = entryExitCalculator(mockInput, mockNodeAccess);
             const endTime = Date.now();
 
             expect(endTime - startTime).to.be.lessThan(5000); // Should complete within 5 seconds
@@ -344,8 +364,9 @@ describe('Entry Exit Calculator Node', () => {
             const mockInput1 = createMockInput(testData);
             const mockInput2 = createMockInput(testData);
 
-            const result1 = entryExitCalculator(mockInput1);
-            const result2 = entryExitCalculator(mockInput2);
+            const mockNodeAccess = createMockNodeAccess(mockCurrentOpenPosition);
+            const result1 = entryExitCalculator(mockInput1, mockNodeAccess);
+            const result2 = entryExitCalculator(mockInput2, mockNodeAccess);
 
             expect(result1).to.deep.equal(result2);
         });

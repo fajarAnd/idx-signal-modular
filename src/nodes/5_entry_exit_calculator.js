@@ -5,8 +5,9 @@
  */
 
 //extract the function from N8N node
-function entryExitCalculator($input) {
+function entryExitCalculator($input, $) {
     let entryExitResults = [];
+    const currentOpenPosition = $('Get Unique Symbol').first().json.codes || [];
 
     for (const item of $input.all()) {
         const { ticker, lastDate, candles, lastClose, indicators, support, resistance, confluence } = item.json;
@@ -29,7 +30,9 @@ function entryExitCalculator($input) {
 
         const riskReward = rewardLot / riskLot;
 
-        if (riskReward < 1.8) continue;
+        if(!currentOpenPosition.includes(ticker)){
+            if (riskReward < 1.8) continue;
+        }
 
         let entryStrategy = 'Wait for Pullback';
         if (entryGapPercent <= 1) {
