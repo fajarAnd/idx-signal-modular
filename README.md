@@ -46,49 +46,6 @@ IDX Signal V2 is a modular stock trading signal system that uses multi-indicator
 └─────────────────┘    └──────────────────┘    └─────────────────┘
 ```
 
-## 🚀 Quick Start
-
-### Installation
-
-```bash
-# Clone repository
-git clone https://github.com/your-repo/idx-signal-modular.git
-cd idx-signal-modular
-
-# Install dependencies
-npm install
-
-# Run tests
-npm test
-
-# Start main pipeline
-npm start
-```
-
-### Basic Usage
-
-```javascript
-const { runSignalPipeline } = require('./src/index');
-
-// Sample raw stock data
-const rawData = [
-  { code: 'BBCA', date: '2024-01-01', open: 8000, high: 8200, low: 7900, close: 8100, volume: 5000000 },
-  // ... more data
-];
-
-// Configuration
-const config = {
-  intervalMonth: 4,
-  modalTersedia: 5000000,
-  scoreGreaterThan: 2,
-  MaxLoss: 100000
-};
-
-// Run pipeline
-const signals = await runSignalPipeline(rawData, config);
-console.log('Trading Signals:', signals);
-```
-
 ## 🧪 Testing Framework
 
 ### Test Structure
@@ -246,61 +203,7 @@ const backtestScenarios = {
 };
 ```
 
-## 📊 Performance Benchmarks
 
-### Execution Speed
-- **Single Stock Analysis**: < 50ms
-- **100 Stock Pipeline**: < 5 seconds
-- **Large Dataset (500+ stocks)**: < 30 seconds
-
-### Memory Usage
-- **Peak Memory**: < 512MB for 1000 stocks
-- **Memory Leaks**: Zero tolerance in tests
-- **Garbage Collection**: Optimized object creation
-
-### Accuracy Metrics
-- **Backtest Accuracy**: ±2% variance from manual calculation
-- **Price Calculations**: ±1 IDR precision
-- **Percentage Calculations**: ±0.01% precision
-
-## 🔧 Configuration & Customization
-
-### Signal Parameters
-
-```javascript
-// Default configuration
-const defaultConfig = {
-  intervalMonth: 4,           // Historical data period
-  modalTersedia: 5000000,     // Available capital (IDR)
-  scoreGreaterThan: 2,        // Minimum confluence score
-  MaxLoss: 100000,           // Maximum loss per trade (IDR)
-  
-  // Risk management
-  riskRewardMinimum: 1.8,    // Minimum R:R ratio
-  supportStrengthThreshold: 1.2,  // High strength threshold
-  volumeSpikeMultiplier: 1.5,     // Volume spike detection
-  
-  // Backtest settings
-  minimumWinRate: 0.52,      // 52% minimum win rate
-  minimumTrades: 5,          // Minimum historical trades
-  bonusWinRate: 0.7,         // 70% for bonus scoring
-  bonusMinTrades: 8,         // Min trades for bonus
-  bonusRiskReward: 2.5       // R:R threshold for bonus
-};
-```
-
-### Custom Indicators
-
-```javascript
-// Example: Adding custom indicator
-const customIndicator = (candles) => {
-  // Your custom calculation
-  return result;
-};
-
-// Integration in technical indicators node
-indicators.custom = customIndicator(candles);
-```
 
 ## 🔗 N8N Integration
 
@@ -337,84 +240,6 @@ indicators.custom = customIndicator(candles);
 }
 ```
 
-## 📋 Error Handling
-
-### Common Error Scenarios
-
-```javascript
-// Data validation errors
-- Insufficient candles (< 50)
-- Invalid data types (null, NaN, undefined)
-- Missing required fields
-
-// Calculation errors  
-- Division by zero in indicators
-- Invalid support/resistance levels
-- Negative risk/reward ratios
-
-// Backtest errors
-- No historical trades found
-- Invalid candle data during simulation
-- Inconsistent win/loss calculations
-```
-
-### Error Recovery
-
-```javascript
-// Graceful degradation
-try {
-  const result = calculateIndicators(candles);
-  return result;
-} catch (error) {
-  console.warn('Indicator calculation failed:', error);
-  return getDefaultIndicators();
-}
-```
-
-## 🚀 Development Workflow
-
-### Adding New Tests
-
-1. **Create Mock Data**
-```javascript
-// test/mock-data-test-case/your_node.js
-const createTestData = (scenario) => {
-  // Generate test data for specific scenario
-};
-```
-
-2. **Write Test Cases**
-```javascript
-// test/nodes/your_node.test.js
-describe('Your Node', () => {
-  describe('Normal Cases', () => {
-    it('should handle valid input correctly', () => {
-      // Test implementation
-    });
-  });
-});
-```
-
-3. **Add Test Scripts**
-```javascript
-// package.json
-"test:your-node": "mocha test/nodes/your_node.test.js"
-```
-
-### Code Quality Standards
-
-```javascript
-// ESLint configuration
-module.exports = {
-  rules: {
-    'no-console': 'warn',
-    'no-unused-vars': 'error',
-    'prefer-const': 'error',
-    'max-len': ['error', { code: 120 }],
-    'complexity': ['error', 10]
-  }
-};
-```
 
 ## 🔄 Future Enhancements
 
@@ -428,32 +253,7 @@ module.exports = {
 - [ ] **Mobile Alerts**: Push notifications for signals
 - [ ] **API Integration**: RESTful API for external systems
 
-### Contributing Guidelines
 
-1. **Fork & Branch**: Create feature branch from `main`
-2. **Write Tests**: Maintain 95%+ test coverage
-3. **Follow Patterns**: Use existing code patterns and structure
-4. **Document Changes**: Update README and inline documentation
-5. **Performance**: Ensure no regression in execution speed
-6. **Review**: Submit PR with detailed description
-
-## 📝 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 🆘 Support & Contact
-
-- **Documentation**: Check inline code comments and tests
-- **Issues**: Create GitHub issue with detailed reproduction steps
-- **Email**: support@idxsignal.com
-- **Discord**: [IDX Signal Community](https://discord.gg/idxsignal)
-
-## 🎯 Acknowledgments
-
-- **N8N Community**: For automation workflow inspiration
-- **TradingView**: Technical analysis methodology reference
-- **IDX**: Indonesia Stock Exchange data standards
-- **Open Source**: Various libraries and tools used in this project
 
 ---
 
