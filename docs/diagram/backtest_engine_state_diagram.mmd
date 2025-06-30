@@ -1,0 +1,79 @@
+stateDiagram-v2
+
+    %% States for the main loop iterating through tickers
+    StateA: Initialize Backtest Loop
+    StateA --> StateB: For each Ticker in $input
+
+    StateB: Process Ticker Data
+    StateB --> StateC: Initialize Wins/Losses/Total
+    StateC --> StateD: Determine Recent Period
+    StateD --> StateE: Loop Through Recent Candles (i)
+
+    %% States for the inner loop (candle iteration for entry)
+    StateE: Check for Entry Condition
+    StateE --> StateF_CandleCheck: Is current candle valid?
+    StateF_CandleCheck --> StateG_SkipCandle: No (invalid candle / low)
+    StateF_CandleCheck --> StateH_TestEntry: Yes (valid)
+
+    StateG_SkipCandle --> StateE: Continue outer loop (next candle)
+
+    StateH_TestEntry: `candles[i].low <= entryExit.entry * 1.005`?
+    StateH_TestEntry --> StateI_NoEntry: No
+    StateH_TestEntry --> StateJ_Entry: Yes (Entry Triggered)
+
+    StateI_NoEntry --> StateE: Continue outer loop (next candle)
+
+    %% States for the innermost loop (simulating trade after entry)
+    StateJ_Entry: Increment Total Trades
+    StateJ_Entry --> StateK_TradeSimulation: Loop Through Future Candles (j)
+    StateK_TradeSimulation: Simulate Trade Day by Day
+    StateK_TradeSimulation --> StateL_CandleCheckTrade: Is current trade candle valid?
+    StateL_CandleCheckTrade --> StateM_BreakTradeSim: No (invalid candle)
+    StateL_CandleCheckTrade --> StateN_CheckStopLoss: Yes (valid)
+
+    StateN_CheckStopLoss: `candles[j].low <= entryExit.stop`?
+    StateN_CheckStopLoss --> StateO_HitStop: Yes (Stop Loss Hit)
+    StateN_CheckStopLoss --> StateP_CheckTakeProfit: No
+
+    StateO_HitStop: Increment Losses, Set hitStop True
+    StateO_HitStop --> StateM_BreakTradeSim: Break Trade Simulation
+
+    StateP_CheckTakeProfit: `candles[j].high >= entryExit.target`?
+    StateP_CheckTakeProfit --> StateQ_HitTarget: Yes (Target Hit)
+    StateP_CheckTakeProfit --> StateK_TradeSimulation: No (Continue Trade Simulation)
+
+    StateQ_HitTarget: Increment Wins, Set hitTarget True
+    StateQ_HitTarget --> StateM_BreakTradeSim: Break Trade Simulation
+
+    StateM_BreakTradeSim --> StateE: Continue outer loop (next candle)
+
+    %% States for post-loop processing and filtering
+    StateE --> StateR_AfterCandleLoop: End Candle Loop (i)
+    StateR_AfterCandleLoop: Check Total Trades
+    StateR_AfterCandleLoop --> StateS_SkipTicker: `total === 0`?
+    StateR_AfterCandleLoop --> StateT_CalculateWinRate: No
+
+    StateS_SkipTicker --> StateB: Continue outer loop (next ticker)
+
+    StateT_CalculateWinRate: Calculate `winRateDec`
+    StateT_CalculateWinRate --> StateU_CheckOpenPosition: Check `currentOpenPosition`
+
+    StateU_CheckOpenPosition: `!currentOpenPosition.includes(ticker)`?
+    StateU_CheckOpenPosition --> StateV_ApplyFilters: Yes
+    StateU_CheckOpenPosition --> StateX_CalculateBonus: No
+
+    StateV_ApplyFilters: `winRateDec < 0.52` OR `total < 5`?
+    StateV_ApplyFilters --> StateS_SkipTicker: Yes (Filter Failed)
+    StateV_ApplyFilters --> StateW_CalculateWinRateFixed: No
+
+    StateW_CalculateWinRateFixed: Calculate `backtestWinRate` (fixed to 1 decimal)
+    StateW_CalculateWinRateFixed --> StateX_CalculateBonus: Proceed to bonus calculation
+
+    StateX_CalculateBonus: Check Bonus Confluence Conditions
+    StateX_CalculateBonus --> StateY_AddResult: Calculate `bonusConfluence`
+
+    StateY_AddResult: Add Backtest Result to `backtestResults`
+    StateY_AddResult --> StateB: Continue outer loop (next ticker)
+
+    StateB --> StateZ: End Backtest Loop
+    StateZ: Return `backtestResults`

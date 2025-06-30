@@ -11,7 +11,8 @@ const createActionRecommendationTestData = (scenario, triggerConfig = {}) => {
         scoreGreaterThan: 2,
         MaxLoss: 100000,
         modalTersedia: 5000000,
-        intervalMonth: 4
+        intervalMonth: 4,
+        entryGapPercent: 4,
     };
 
     const config = { ...defaultTriggerConfig, ...triggerConfig };
